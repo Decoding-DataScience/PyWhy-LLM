@@ -1,0 +1,2 @@
+[console_scripts]
+run_causal_app = causal_app:main
