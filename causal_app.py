@@ -7,6 +7,57 @@ import os
 import json
 from dotenv import load_dotenv
 
+# Set page config
+st.set_page_config(
+    page_title="PyWhy-LLM Causal Analysis Assistant",
+    page_icon="🔍",
+    layout="wide"
+)
+
+# Custom CSS for styling
+st.markdown("""
+    <style>
+    .main-title {
+        color: #1E88E5;
+        font-size: 42px;
+        font-weight: bold;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    .section-header {
+        color: #2E7D32;
+        font-size: 24px;
+        font-weight: bold;
+        margin-top: 30px;
+        border-bottom: 2px solid #2E7D32;
+        padding-bottom: 10px;
+    }
+    .subsection-header {
+        color: #1565C0;
+        font-size: 20px;
+        margin-top: 20px;
+    }
+    .info-box {
+        background-color: #E3F2FD;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 10px 0;
+    }
+    .warning-box {
+        background-color: #FFF3E0;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 10px 0;
+    }
+    .step-box {
+        background-color: #F5F5F5;
+        padding: 15px;
+        border-left: 4px solid #1E88E5;
+        margin: 10px 0;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 def convert_tuples_to_lists(obj):
     if isinstance(obj, tuple):
         return list(obj)
@@ -158,117 +209,91 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 if not openai_api_key:
     st.error("Please set the OPENAI_API_KEY environment variable.")
 else:
-    # Create two columns for the layout
-    guide_col, main_col = st.columns([1, 2])
-
-    with guide_col:
+    # Main title
+    st.markdown('<p class="main-title">PyWhy-LLM Causal Analysis Assistant</p>', unsafe_allow_html=True)
+    
+    # Introduction section
+    st.markdown('<p class="section-header">Welcome to PyWhy-LLM</p>', unsafe_allow_html=True)
+    with st.expander("ℹ️ What is PyWhy-LLM?", expanded=True):
         st.markdown("""
-        # Application Guide
+        <div class="info-box">
+        PyWhy-LLM is an innovative tool that combines Large Language Models (LLMs) with causal analysis to help researchers and analysts:
         
-        ## What is PyWhy-LLM?
-        PyWhy-LLM is an innovative tool that combines Large Language Models (LLMs) with causal analysis. It helps researchers and analysts:
-        - Identify potential causal relationships
-        - Suggest confounding variables
-        - Validate causal assumptions
-        - Build and critique DAGs (Directed Acyclic Graphs)
-        
-        ## How to Use
-        1. Choose your LLM model (currently GPT-4)
-        2. Select an analysis step
-        3. Enter your variables and factors
-        4. Follow the step-by-step process
-        
-        ## Analysis Steps
-        
-        ### 1. Model Suggestion
-        - Start here to build your causal model
-        - Identify domain expertise needed
-        - Discover potential confounders
-        - Build initial relationships
-        
-        ### 2. Identification Suggestion
-        - Find backdoor adjustment sets
-        - Identify mediator variables
-        - Discover instrumental variables
-        
-        ### 3. Validation Suggestion
-        - Validate your DAG structure
-        - Find latent confounders
-        - Identify negative controls
-        
-        ## Tips
-        - Be specific with your variables
-        - Use clear, consistent naming
-        - Consider all relevant factors
-        - Start with simple relationships
-        """)
+        - 🔍 Identify potential causal relationships
+        - 🎯 Suggest confounding variables
+        - ✅ Validate causal assumptions
+        - 📊 Build and critique DAGs (Directed Acyclic Graphs)
+        </div>
+        """, unsafe_allow_html=True)
 
-    with main_col:
-        st.title("PyWhy-LLM Causal Analysis Assistant")
-        st.subheader("Leveraging LLMs for Causal Insights")
+    # Quick Start Guide
+    st.markdown('<p class="section-header">Quick Start Guide</p>', unsafe_allow_html=True)
+    with st.expander("📚 How to Use PyWhy-LLM", expanded=True):
+        st.markdown("""
+        <div class="step-box">
+        1. 🎯 Select your analysis step from the sidebar
+        2. 🔄 Enter your variables and factors in the input fields
+        3. 📊 Follow the step-by-step process for your chosen analysis
+        4. 📋 Review and interpret the results
+        </div>
+        """, unsafe_allow_html=True)
 
-        llm_model = st.sidebar.selectbox("Choose LLM Model", ["gpt-4"])
-
-        analysis_type = st.sidebar.selectbox(
-            "Choose Analysis Step", ["Model Suggestion", "Identification Suggestion", "Validation Suggestion"]
+    # Main Analysis Interface
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        st.markdown('<p class="section-header">Analysis Configuration</p>', unsafe_allow_html=True)
+        
+        llm_model = st.selectbox("🤖 Choose LLM Model", ["gpt-4"])
+        
+        analysis_type = st.selectbox(
+            "📊 Choose Analysis Step",
+            ["Model Suggestion", "Identification Suggestion", "Validation Suggestion"]
         )
-
-        # Add help text for factors with examples
-        st.markdown("""
-        ### Enter Variables and Factors
-        Provide all relevant variables that might be involved in your causal analysis.
-        """)
+        
+        st.markdown('<p class="subsection-header">Variables Input</p>', unsafe_allow_html=True)
         
         factors_help = """
-        Examples:
-        - Medical: "smoking, lung cancer, exercise habits, air pollution exposure"
-        - Education: "study hours, test scores, sleep quality, stress levels"
-        - Economics: "interest rates, inflation, unemployment, gdp growth"
+        Examples by domain:
+        🏥 Medical: "smoking, lung cancer, exercise habits"
+        📚 Education: "study hours, test scores, sleep quality"
+        💰 Economics: "interest rates, inflation, unemployment"
         """
         
         all_factors_str = st.text_area(
-            "Enter all relevant factors (comma-separated):", 
+            "📝 Enter all relevant factors (comma-separated):", 
             "smoking, lung cancer, exercise habits, air pollution exposure",
             help=factors_help
         )
         all_factors = [factor.strip() for factor in all_factors_str.split(',')]
 
-        # Add help text for treatment with examples
-        treatment_help = """
-        Examples:
-        - Medical: "smoking" or "exercise_program"
-        - Education: "study_hours" or "tutoring_program"
-        - Economics: "interest_rate_change" or "tax_policy"
-        """
         treatment = st.text_input(
-            "Enter the treatment variable:", 
-            help=treatment_help
+            "🎯 Enter the treatment variable:",
+            help="The variable you're studying the effect of"
         )
 
-        # Add help text for outcome with examples
-        outcome_help = """
-        Examples:
-        - Medical: "lung_cancer" or "blood_pressure"
-        - Education: "test_score" or "graduation_rate"
-        - Economics: "gdp_growth" or "unemployment_rate"
-        """
         outcome = st.text_input(
-            "Enter the outcome variable:",
-            help=outcome_help
+            "🎯 Enter the outcome variable:",
+            help="The variable you want to measure the effect on"
         )
 
-        # Initialize session state for domain_expertises if it doesn't exist
+    with col2:
+        st.markdown('<p class="section-header">Analysis Steps</p>', unsafe_allow_html=True)
+        
+        # Initialize session state
         if 'domain_expertises' not in st.session_state:
             st.session_state.domain_expertises = None
 
         if analysis_type == "Model Suggestion":
             st.markdown("""
-            ### Model Suggestion Step
-            This step helps you build the initial causal model by:
-            1. Identifying required domain expertise
-            2. Suggesting potential confounding variables
-            3. Building pair-wise relationships between variables
-            """)
+            <div class="info-box">
+            <h3>🏗️ Model Suggestion Step</h3>
+            Build your initial causal model through these steps:
+            1. Identify required domain expertise
+            2. Discover potential confounding variables
+            3. Establish pair-wise relationships between variables
+            </div>
+            """, unsafe_allow_html=True)
             
             modeler = ModelSuggester(llm_model)
 
@@ -303,12 +328,14 @@ else:
 
         elif analysis_type == "Identification Suggestion":
             st.markdown("""
-            ### Identification Suggestion Step
-            This step helps you identify:
-            1. Backdoor adjustment sets for causal estimation
-            2. Potential mediator variables
-            3. Possible instrumental variables
-            """)
+            <div class="info-box">
+            <h3>🔍 Identification Suggestion Step</h3>
+            Identify key components for causal estimation:
+            1. Find backdoor adjustment sets
+            2. Discover potential mediator variables
+            3. Locate possible instrumental variables
+            </div>
+            """, unsafe_allow_html=True)
             
             identifier = IdentificationSuggester(llm_model)
 
@@ -341,12 +368,14 @@ else:
 
         elif analysis_type == "Validation Suggestion":
             st.markdown("""
-            ### Validation Suggestion Step
-            This step helps you:
+            <div class="info-box">
+            <h3>✅ Validation Suggestion Step</h3>
+            Validate and improve your causal model:
             1. Validate your DAG structure
             2. Identify potential latent confounders
             3. Find suitable negative controls
-            """)
+            </div>
+            """, unsafe_allow_html=True)
             
             validator = ValidationSuggester(llm_model)
 
