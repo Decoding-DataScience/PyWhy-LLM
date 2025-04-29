@@ -9,186 +9,81 @@ from dotenv import load_dotenv
 
 # Set page config
 st.set_page_config(
-    page_title="Causal Analysis App",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="PyWhy-LLM Causal Analysis Assistant",
+    layout="wide"
 )
 
 # Custom CSS for styling
 st.markdown("""
     <style>
-    /* Title Styles */
     .main-title {
-        font-size: 2.5em;
-        font-weight: 600;
-        color: #2c3e50;
-        margin-bottom: 10px;
+        color: #1E88E5;
+        font-size: 24px;
+        font-weight: bold;
         text-align: center;
-        padding: 20px 0;
+        margin-bottom: 10px;
     }
-    
     .attribution {
         text-align: center;
-        font-size: 1em;
-        color: #666;
-        margin-bottom: 30px;
-    }
-    
-    .attribution a {
-        color: #3498db;
-        text-decoration: none;
-        font-weight: 500;
-    }
-    
-    .attribution a:hover {
-        text-decoration: underline;
-    }
-    
-    /* Section Headers */
-    .section-header {
-        font-size: 1.8em;
-        font-weight: 600;
-        color: #2c3e50;
-        margin: 25px 0 15px 0;
-        padding-bottom: 8px;
-        border-bottom: 2px solid #3498db;
-    }
-    
-    .subsection-header {
-        font-size: 1.4em;
-        font-weight: 500;
-        color: #2c3e50;
-        margin: 20px 0 10px 0;
-    }
-    
-    /* Info Box Styles */
-    .info-box {
-        background-color: #f8f9fa;
-        padding: 20px;
-        border-radius: 10px;
-        margin: 15px 0;
-        border-left: 4px solid #3498db;
-    }
-    
-    .info-box h3 {
-        font-size: 1.8em;
-        font-weight: 600;
-        color: #2c3e50;
-        margin-bottom: 15px;
-    }
-    
-    .info-box ol {
-        margin: 10px 0;
-        padding-left: 20px;
-    }
-    
-    .info-box li {
-        color: #2c3e50;
-        margin: 8px 0;
-        line-height: 1.5;
-    }
-    
-    /* Step Box Styles */
-    .step-box {
-        background-color: #f8f9fa;
-        padding: 25px;
-        border-radius: 10px;
-        margin: 15px 0;
-        border-left: 4px solid #3498db;
-    }
-    
-    .step-item {
-        background-color: white;
-        padding: 20px;
-        margin: 15px 0;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        transition: transform 0.2s ease-in-out;
-    }
-    
-    .step-item:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    
-    .step-item p {
-        margin: 0;
-        padding: 0;
-        color: #2c3e50;
-        line-height: 1.6;
-    }
-    
-    .step-item strong {
-        color: #3498db;
-        font-size: 1.1em;
-        display: block;
-        margin-bottom: 8px;
-    }
-    
-    .step-description {
-        color: #5a6c7d !important;
-        font-size: 0.95em;
-        margin-top: 5px !important;
-    }
-    
-    /* Output Section Styles */
-    .output-section {
-        background: #ffffff;
-        border-radius: 10px;
-        padding: 25px;
-        margin: 20px 0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .section-title {
-        font-size: 1.8em;
-        font-weight: 600;
-        color: #2c3e50;
+        font-size: 14px;
+        color: #424242;
         margin-bottom: 20px;
+    }
+    .attribution a {
+        color: #1E88E5;
+        text-decoration: none;
+    }
+    .section-header {
+        color: #2E7D32;
+        font-size: 18px;
+        font-weight: bold;
+        margin-top: 20px;
         padding-bottom: 10px;
-        border-bottom: 2px solid #3498db;
+        border-bottom: 2px solid #2E7D32;
     }
-    
-    .section-subtitle {
-        font-size: 1.4em;
-        font-weight: 500;
-        color: #2c3e50;
-        margin: 20px 0 15px 0;
+    .info-box {
+        background-color: #E3F2FD;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 10px 0;
     }
-    
-    /* Streamlit Element Overrides */
-    .stMarkdown div {
-        font-size: 1em;
-        color: #2c3e50;
+    .step-box {
+        background-color: #F5F5F5;
+        padding: 15px;
+        border-left: 4px solid #1E88E5;
+        margin: 10px 0;
     }
-    
-    /* Expander Styling */
-    .streamlit-expanderHeader {
-        font-size: 1.2em !important;
-        font-weight: 600 !important;
-        color: #2c3e50 !important;
-        background-color: transparent !important;
-        padding: 15px !important;
+    .output-section {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #F5F5F5;
+        border-radius: 5px;
     }
-    
-    .streamlit-expanderContent {
-        background-color: #ffffff !important;
-        border-radius: 0 0 10px 10px !important;
-        padding: 20px !important;
+    .output-item {
+        background-color: white;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+        border-left: 3px solid #1E88E5;
     }
-    
-    /* Select Box Styling */
-    .stSelectbox label {
-        font-size: 1.2em !important;
-        font-weight: 500 !important;
-        color: #2c3e50 !important;
+    .confidence-level {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 3px;
+        margin-left: 10px;
+        font-size: 0.9em;
     }
-    
-    /* Text Input Styling */
-    .stTextInput label, .stTextArea label {
-        font-size: 1.2em !important;
-        font-weight: 500 !important;
-        color: #2c3e50 !important;
+    .high-confidence {
+        background-color: #C8E6C9;
+        color: #2E7D32;
+    }
+    .medium-confidence {
+        background-color: #FFF3E0;
+        color: #F57C00;
+    }
+    .low-confidence {
+        background-color: #FFEBEE;
+        color: #C62828;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -697,56 +592,40 @@ if not openai_api_key:
     st.error("Please set the OPENAI_API_KEY environment variable.")
 else:
     # Main title and attribution
-    st.markdown('<h1 class="main-title">PyWhy-LLM Causal Analysis Assistant</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="main-title">PyWhy-LLM Causal Analysis Assistant</p>', unsafe_allow_html=True)
     st.markdown('<p class="attribution">(Created by <a href="https://www.linkedin.com/in/syedalihasannaqvi/" target="_blank">Syed Hasan</a>)</p>', unsafe_allow_html=True)
     
     # Introduction section
-    st.markdown('<h2 class="section-header">Welcome to PyWhy-LLM</h2>', unsafe_allow_html=True)
+    st.markdown('<p class="section-header">Welcome to PyWhy-LLM</p>', unsafe_allow_html=True)
     with st.expander("ℹ️ What is PyWhy-LLM?", expanded=True):
         st.markdown("""
         <div class="info-box">
-        <h3>PyWhy-LLM is an innovative tool that combines Large Language Models (LLMs) with causal analysis to help researchers and analysts:</h3>
-        <ul>
-            <li>🔍 Identify potential causal relationships</li>
-            <li>🎯 Suggest confounding variables</li>
-            <li>✅ Validate causal assumptions</li>
-            <li>📊 Build and critique DAGs (Directed Acyclic Graphs)</li>
-        </ul>
+        PyWhy-LLM is an innovative tool that combines Large Language Models (LLMs) with causal analysis to help researchers and analysts:
+        
+        • Identify potential causal relationships
+        • Suggest confounding variables
+        • Validate causal assumptions
+        • Build and critique DAGs (Directed Acyclic Graphs)
         </div>
         """, unsafe_allow_html=True)
 
     # Quick Start Guide
-    st.markdown('<h2 class="section-header">Quick Start Guide</h2>', unsafe_allow_html=True)
+    st.markdown('<p class="section-header">Quick Start Guide</p>', unsafe_allow_html=True)
     with st.expander("📚 How to Use PyWhy-LLM", expanded=True):
         st.markdown("""
-            <div class="step-box">
-                <div class="step-item">
-                    <p><strong>1. 🎯 Select your analysis step</strong></p>
-                    <p class="step-description">Choose from Model Suggestion, Identification Suggestion, or Validation Suggestion</p>
-                </div>
-                
-                <div class="step-item">
-                    <p><strong>2. 📝 Enter your variables</strong></p>
-                    <p class="step-description">Input your treatment, outcome, and other relevant variables</p>
-                </div>
-                
-                <div class="step-item">
-                    <p><strong>3. 📊 Follow the guided process</strong></p>
-                    <p class="step-description">Complete each step as directed by the interface</p>
-                </div>
-                
-                <div class="step-item">
-                    <p><strong>4. 📋 Review results</strong></p>
-                    <p class="step-description">Analyze the output and insights provided</p>
-                </div>
-            </div>
+        <div class="step-box">
+        1. Select your analysis step from the sidebar
+        2. Enter your variables and factors in the input fields
+        3. Follow the step-by-step process for your chosen analysis
+        4. Review and interpret the results
+        </div>
         """, unsafe_allow_html=True)
 
     # Main Analysis Interface
     col1, col2 = st.columns([1, 2])
     
     with col1:
-        st.markdown('<h2 class="section-header">Analysis Configuration</h2>', unsafe_allow_html=True)
+        st.markdown('<p class="section-header">Analysis Configuration</p>', unsafe_allow_html=True)
         
         llm_model = st.selectbox("🤖 Choose LLM Model", ["gpt-4"])
         
@@ -757,39 +636,32 @@ else:
         
         st.markdown('<p class="subsection-header">Variables Input</p>', unsafe_allow_html=True)
         
-        # Updated help text with more domain examples
         factors_help = """
         Examples by domain:
-        🏥 Medical: "smoking, lung cancer, exercise habits, air pollution"
-        📚 Education: "study hours, test scores, sleep quality, stress"
-        💰 Economics: "interest rates, inflation, unemployment, gdp"
-        🌍 Environmental: "co2 emissions, temperature, deforestation, rainfall"
+        • Medical: "smoking, lung cancer, exercise habits, air pollution"
+        • Education: "study hours, test scores, sleep quality, stress"
+        • Economics: "interest rates, inflation, unemployment, gdp"
+        • Environmental: "co2 emissions, temperature, deforestation, rainfall"
         """
         
-        # Default example for medical domain
         default_factors = "smoking, lung cancer, exercise habits, air pollution exposure"
         all_factors_str = st.text_area(
             "📝 Enter all relevant factors (comma-separated):", 
             value=default_factors,
-            help=factors_help,
-            placeholder="Enter factors like: smoking, lung cancer, exercise habits..."
+            help=factors_help
         )
         all_factors = [factor.strip() for factor in all_factors_str.split(',')]
 
-        # Default example for treatment variable
         treatment = st.text_input(
             "🎯 Enter the treatment variable:",
             value="smoking",
-            help="The variable whose effect you want to study (e.g., smoking, study hours, exercise)",
-            placeholder="Enter treatment variable (e.g., smoking)"
+            help="The variable whose effect you want to study"
         )
 
-        # Default example for outcome variable
         outcome = st.text_input(
             "🎯 Enter the outcome variable:",
             value="lung cancer",
-            help="The variable you want to measure the effect on (e.g., lung cancer, test score, health)",
-            placeholder="Enter outcome variable (e.g., lung cancer)"
+            help="The variable you want to measure the effect on"
         )
 
     with col2:
