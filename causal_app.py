@@ -27,31 +27,33 @@ else:
     treatment = st.text_input("Enter the treatment variable:")
     outcome = st.text_input("Enter the outcome variable:")
 
-    domain_expertises = None  # Initialize
+    # Initialize session state for domain_expertises if it doesn't exist
+    if 'domain_expertises' not in st.session_state:
+        st.session_state.domain_expertises = None
 
     if analysis_type == "Model Suggestion":
         modeler = ModelSuggester(llm_model)
 
         if st.button("Suggest Domain Expertises"):
             if all_factors:
-                domain_expertises = modeler.suggest_domain_expertises(all_factors)
+                st.session_state.domain_expertises = modeler.suggest_domain_expertises(all_factors)
                 st.subheader("Suggested Domain Expertises:")
-                st.write(domain_expertises)
+                st.write(st.session_state.domain_expertises)
             else:
                 st.warning("Please enter the relevant factors.")
 
         if st.button("Suggest Potential Confounders"):
-            if treatment and outcome and all_factors and domain_expertises is not None:
-                suggested_confounders = modeler.suggest_confounders(treatment, outcome, all_factors, domain_expertises)
+            if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
+                suggested_confounders = modeler.suggest_confounders(treatment, outcome, all_factors, st.session_state.domain_expertises)
                 st.subheader("Suggested Potential Confounders:")
                 st.write(suggested_confounders)
             else:
                 st.warning("Please ensure treatment, outcome, factors, and domain expertises are provided.")
 
         if st.button("Suggest Pair-wise Relationships (DAG)"):
-            if treatment and outcome and all_factors and domain_expertises is not None:
+            if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
                 suggested_dag = modeler.suggest_relationships(
-                    treatment, outcome, all_factors, domain_expertises, RelationshipStrategy.Pairwise
+                    treatment, outcome, all_factors, st.session_state.domain_expertises, RelationshipStrategy.Pairwise
                 )
                 st.subheader("Suggested Pair-wise Relationships (Potential DAG Edges):")
                 st.write(suggested_dag)
@@ -62,24 +64,24 @@ else:
         identifier = IdentificationSuggester(llm_model)
 
         if st.button("Suggest Backdoor Set"):
-            if treatment and outcome and all_factors and domain_expertises is not None:
-                suggested_backdoor = identifier.suggest_backdoor(treatment, outcome, all_factors, domain_expertises)
+            if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
+                suggested_backdoor = identifier.suggest_backdoor(treatment, outcome, all_factors, st.session_state.domain_expertises)
                 st.subheader("Suggested Backdoor Set:")
                 st.write(suggested_backdoor)
             else:
                 st.warning("Please ensure treatment, outcome, factors, and domain expertises are provided.")
 
         if st.button("Suggest Mediator Set"):
-            if treatment and outcome and all_factors and domain_expertises is not None:
-                suggested_mediators = identifier.suggest_mediators(treatment, outcome, all_factors, domain_expertises)
+            if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
+                suggested_mediators = identifier.suggest_mediators(treatment, outcome, all_factors, st.session_state.domain_expertises)
                 st.subheader("Suggested Mediator Set:")
                 st.write(suggested_mediators)
             else:
                 st.warning("Please ensure treatment, outcome, factors, and domain expertises are provided.")
 
         if st.button("Suggest Instrumental Variables (IVs)"):
-            if treatment and outcome and all_factors and domain_expertises is not None:
-                suggested_iv = identifier.suggest_ivs(treatment, outcome, all_factors, domain_expertises)
+            if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
+                suggested_iv = identifier.suggest_ivs(treatment, outcome, all_factors, st.session_state.domain_expertises)
                 st.subheader("Suggested Instrumental Variables (IVs):")
                 st.write(suggested_iv)
             else:
@@ -99,9 +101,9 @@ else:
             st.warning("Please enter a valid Python dictionary for the DAG.")
 
         if st.button("Critique the DAG Edges"):
-            if all_factors and suggested_dag and domain_expertises is not None:
+            if all_factors and suggested_dag and st.session_state.domain_expertises is not None:
                 suggested_critiques_dag = validator.critique_graph(
-                    all_factors, suggested_dag, domain_expertises, RelationshipStrategy.Pairwise
+                    all_factors, suggested_dag, st.session_state.domain_expertises, RelationshipStrategy.Pairwise
                 )
                 st.subheader("Critique of the DAG Edges:")
                 st.write(suggested_critiques_dag)
@@ -109,9 +111,9 @@ else:
                 st.warning("Please ensure factors, DAG, and domain expertises are provided.")
 
         if st.button("Suggest Latent Confounders"):
-            if treatment and outcome and all_factors and domain_expertises is not None:
+            if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
                 suggested_latent_confounders = validator.suggest_latent_confounders(
-                    treatment, outcome, all_factors, domain_expertises
+                    treatment, outcome, all_factors, st.session_state.domain_expertises
                 )
                 st.subheader("Suggested Latent Confounders:")
                 st.write(suggested_latent_confounders)
@@ -119,9 +121,9 @@ else:
                 st.warning("Please ensure treatment, outcome, factors, and domain expertises are provided.")
 
         if st.button("Suggest Negative Controls"):
-            if treatment and outcome and all_factors and domain_expertises is not None:
+            if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
                 suggested_negative_controls = validator.suggest_negative_controls(
-                    treatment, outcome, all_factors, domain_expertises
+                    treatment, outcome, all_factors, st.session_state.domain_expertises
                 )
                 st.subheader("Suggested Negative Controls:")
                 st.write(suggested_negative_controls)
