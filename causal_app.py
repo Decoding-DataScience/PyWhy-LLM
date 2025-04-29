@@ -19,10 +19,29 @@ st.markdown("""
     <style>
     .main-title {
         color: #1E88E5;
-        font-size: 42px;
+        font-size: 52px;
         font-weight: bold;
-        margin-bottom: 20px;
+        margin-bottom: 10px;
         text-align: center;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        background: linear-gradient(45deg, #1E88E5, #1565C0);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        padding: 20px 0;
+    }
+    .attribution {
+        text-align: center;
+        font-size: 18px;
+        color: #424242;
+        margin-bottom: 30px;
+    }
+    .attribution a {
+        color: #1E88E5;
+        text-decoration: none;
+        font-weight: bold;
+    }
+    .attribution a:hover {
+        text-decoration: underline;
     }
     .section-header {
         color: #2E7D32;
@@ -43,6 +62,20 @@ st.markdown("""
         border-radius: 10px;
         margin: 10px 0;
     }
+    .info-box ul {
+        list-style-type: none;
+        padding-left: 0;
+    }
+    .info-box li {
+        margin: 10px 0;
+        padding-left: 25px;
+        position: relative;
+    }
+    .info-box li:before {
+        content: "•";
+        position: absolute;
+        left: 0;
+    }
     .warning-box {
         background-color: #FFF3E0;
         padding: 15px;
@@ -53,6 +86,13 @@ st.markdown("""
         background-color: #F5F5F5;
         padding: 15px;
         border-left: 4px solid #1E88E5;
+        margin: 10px 0;
+    }
+    .step-box ol {
+        margin: 0;
+        padding-left: 20px;
+    }
+    .step-box li {
         margin: 10px 0;
     }
     </style>
@@ -357,8 +397,9 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 if not openai_api_key:
     st.error("Please set the OPENAI_API_KEY environment variable.")
 else:
-    # Main title
+    # Main title and attribution
     st.markdown('<p class="main-title">PyWhy-LLM Causal Analysis Assistant</p>', unsafe_allow_html=True)
+    st.markdown('<p class="attribution">(Created by <a href="https://www.linkedin.com/in/syedalihasannaqvi/" target="_blank">Syed Hasan</a>)</p>', unsafe_allow_html=True)
     
     # Introduction section
     st.markdown('<p class="section-header">Welcome to PyWhy-LLM</p>', unsafe_allow_html=True)
@@ -448,9 +489,11 @@ else:
             <div class="info-box">
             <h3>🏗️ Model Suggestion Step</h3>
             Build your initial causal model through these steps:
-            1. Identify required domain expertise
-            2. Discover potential confounding variables
-            3. Establish pair-wise relationships between variables
+            <ol>
+                <li>Identify required domain expertise</li>
+                <li>Discover potential confounding variables</li>
+                <li>Establish pair-wise relationships between variables</li>
+            </ol>
             </div>
             """, unsafe_allow_html=True)
             
@@ -490,9 +533,11 @@ else:
             <div class="info-box">
             <h3>🔍 Identification Suggestion Step</h3>
             Identify key components for causal estimation:
-            1. Find backdoor adjustment sets
-            2. Discover potential mediator variables
-            3. Locate possible instrumental variables
+            <ol>
+                <li>Find backdoor adjustment sets</li>
+                <li>Discover potential mediator variables</li>
+                <li>Locate possible instrumental variables</li>
+            </ol>
             </div>
             """, unsafe_allow_html=True)
             
@@ -530,9 +575,11 @@ else:
             <div class="info-box">
             <h3>✅ Validation Suggestion Step</h3>
             Validate and improve your causal model:
-            1. Validate your DAG structure
-            2. Identify potential latent confounders
-            3. Find suitable negative controls
+            <ol>
+                <li>Validate your DAG structure</li>
+                <li>Identify potential latent confounders</li>
+                <li>Find suitable negative controls</li>
+            </ol>
             </div>
             """, unsafe_allow_html=True)
             
