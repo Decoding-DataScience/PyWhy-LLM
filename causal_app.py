@@ -1221,20 +1221,23 @@ Consider the example of how school quality affects job offers through college ad
   2. College admission then affects job offers
   3. It's on the causal path between treatment and outcome
 
-Format your response as a list of mediators with explanations:
+Format your response EXACTLY as a JSON array of arrays, where each inner array contains:
+1. The name of the mediator variable (string)
+2. A brief explanation of its mediating role (string)
+3. A confidence score between 0 and 1 (number)
+
+Example format:
 [
     ["college_admission", "mediates between school quality and job offers", 0.8],
     ["academic_performance", "links school quality to college prospects", 0.7]
 ]
 
-Include confidence scores (0-1) based on strength of mediation.
-
-Your response:"""
+Ensure your response is a valid JSON array and includes ONLY the array, no additional text."""
 
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "You are a causal inference expert helping to identify mediating variables."},
+                {"role": "system", "content": "You are a causal inference expert. Return ONLY the requested JSON array format, no additional text."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
@@ -1243,24 +1246,67 @@ Your response:"""
         
         try:
             suggestion = response.choices[0].message.content.strip()
-            suggestion = suggestion.replace("'", '"')
             
+            # Clean up the response
+            suggestion = suggestion.replace("'", '"')  # Replace single quotes with double quotes
+            suggestion = suggestion.replace("\n", " ")  # Remove newlines
+            
+            # Extract just the array part if there's additional text
             import re
-            list_pattern = r'\[([\s\S]*)\]'
-            match = re.search(list_pattern, suggestion)
+            array_pattern = r'\[(.*)\]'
+            match = re.search(array_pattern, suggestion)
             if match:
                 suggestion = f"[{match.group(1)}]"
             
             try:
+                # Try parsing as JSON first
                 mediators = json.loads(suggestion)
+                
+                # Validate the structure
+                if not isinstance(mediators, list):
+                    st.warning("Invalid response format. Expected a list of mediator variables.")
+                    return None
+                
+                for mediator in mediators:
+                    if not isinstance(mediator, list) or len(mediator) < 3:
+                        st.warning("Invalid mediator format. Each mediator should have a name, explanation, and score.")
+                        return None
+                    
+                    # Ensure score is a float between 0 and 1
+                    mediator[2] = float(mediator[2])
+                    if not 0 <= mediator[2] <= 1:
+                        mediator[2] = max(0, min(1, mediator[2]))  # Clamp between 0 and 1
+                
+                return mediators
+                
             except json.JSONDecodeError:
+                # If JSON fails, try Python literal evaluation
                 import ast
-                mediators = ast.literal_eval(suggestion)
-            
-            return mediators if mediators else None
+                try:
+                    mediators = ast.literal_eval(suggestion)
+                    
+                    # Apply the same validation as above
+                    if not isinstance(mediators, list):
+                        st.warning("Invalid response format. Expected a list of mediator variables.")
+                        return None
+                    
+                    for mediator in mediators:
+                        if not isinstance(mediator, list) or len(mediator) < 3:
+                            st.warning("Invalid mediator format. Each mediator should have a name, explanation, and score.")
+                            return None
+                        
+                        # Ensure score is a float between 0 and 1
+                        mediator[2] = float(mediator[2])
+                        if not 0 <= mediator[2] <= 1:
+                            mediator[2] = max(0, min(1, mediator[2]))  # Clamp between 0 and 1
+                    
+                    return mediators
+                except:
+                    st.warning("Could not parse the mediator suggestions. Please try again.")
+                    return None
             
         except Exception as e:
-            st.error(f"Error parsing mediator suggestion: {str(e)}")
+            st.error(f"Error processing mediator suggestions: {str(e)}")
             return None
             
     except Exception as e:
