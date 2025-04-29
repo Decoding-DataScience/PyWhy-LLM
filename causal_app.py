@@ -9,6 +9,20 @@ from dotenv import load_dotenv
 from openai import OpenAI
 import graphviz
 
+# Standard error messages
+OPENAI_API_KEY_ERROR = "OpenAI API key not found. Please set the OPENAI_API_KEY environment variable."
+MISSING_VARIABLES_ERROR = "Please enter all required variables (factors, treatment, and outcome)."
+MISSING_FACTORS_ERROR = "Please enter some factors first."
+
+# Initialize OpenAI client
+def get_openai_client():
+    """Get OpenAI client with proper error handling."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        st.error(OPENAI_API_KEY_ERROR)
+        return None
+    return OpenAI(api_key=api_key)
+
 # Set page config
 st.set_page_config(
     page_title="PyWhy-LLM Causal Analysis Assistant",
@@ -894,14 +908,14 @@ def generate_critique_explanation(category, critique):
 
 def suggest_variables_from_factors(factors, openai_api_key):
     """Use OpenAI to suggest treatment and outcome variables from the input factors."""
-    from openai import OpenAI
-    
     if not factors:
         return None, None
     
     try:
-        client = OpenAI(api_key=openai_api_key)
-        
+        client = get_openai_client()
+        if not client:
+            return None, None
+            
         # Create a prompt for the OpenAI API
         prompt = f"""Given these factors in a causal analysis context: {', '.join(factors)}
 
@@ -956,14 +970,14 @@ Your response:"""
 
 def suggest_confounders_from_factors(treatment, outcome, factors, openai_api_key):
     """Use OpenAI to suggest potential confounding variables."""
-    from openai import OpenAI
-    
     if not factors or not treatment or not outcome:
         return None
     
     try:
-        client = OpenAI(api_key=openai_api_key)
-        
+        client = get_openai_client()
+        if not client:
+            return None
+
         prompt = f"""Given:
 - Treatment variable: {treatment}
 - Outcome variable: {outcome}
@@ -1002,14 +1016,14 @@ Your response:"""
 
 def suggest_relationships_from_factors(treatment, outcome, factors, openai_api_key):
     """Use OpenAI to suggest pair-wise relationships for DAG."""
-    from openai import OpenAI
-    
     if not factors or not treatment or not outcome:
         return None
     
     try:
-        client = OpenAI(api_key=openai_api_key)
-        
+        client = get_openai_client()
+        if not client:
+            return None
+
         # Create a more structured prompt
         prompt = f"""Given these variables in a causal analysis context:
 - Treatment: {treatment}
@@ -1101,15 +1115,14 @@ Your response:"""
 
 def suggest_backdoor_from_factors(treatment, outcome, factors, openai_api_key):
     """Use OpenAI to suggest backdoor adjustment set."""
-    from openai import OpenAI
-    
     if not factors or not treatment or not outcome:
         return None
     
     try:
-        client = OpenAI(api_key=openai_api_key)
-        
-        # Create a prompt for the OpenAI API
+        client = get_openai_client()
+        if not client:
+            return None
+
         prompt = f"""Given a causal analysis with:
 Treatment: {treatment}
 Outcome: {outcome}
@@ -1187,14 +1200,14 @@ Your response:"""
 
 def suggest_mediator_from_factors(treatment, outcome, factors, openai_api_key):
     """Use OpenAI to suggest mediator variables."""
-    from openai import OpenAI
-    
     if not factors or not treatment or not outcome:
         return None
     
     try:
-        client = OpenAI(api_key=openai_api_key)
-        
+        client = get_openai_client()
+        if not client:
+            return None
+
         prompt = f"""Given a causal analysis with:
 Treatment: {treatment}
 Outcome: {outcome}
@@ -1256,14 +1269,14 @@ Your response:"""
 
 def suggest_iv_from_factors(treatment, outcome, factors, openai_api_key):
     """Use OpenAI to suggest instrumental variables."""
-    from openai import OpenAI
-    
     if not factors or not treatment or not outcome:
         return None
     
     try:
-        client = OpenAI(api_key=openai_api_key)
-        
+        client = get_openai_client()
+        if not client:
+            return None
+
         prompt = f"""Given a causal analysis with:
 Treatment: {treatment}
 Outcome: {outcome}
@@ -1522,7 +1535,7 @@ load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 
 if not openai_api_key:
-    st.error("Please set the OPENAI_API_KEY environment variable.")
+    st.error(OPENAI_API_KEY_ERROR)
 else:
     # Main title and attribution
     st.markdown('<h1 class="main-title">PyWhy-LLM Causal Analysis Assistant</h1>', unsafe_allow_html=True)
@@ -1608,24 +1621,21 @@ else:
         # Add a button to suggest variables
         if st.button("🎯 Suggest Treatment and Outcome Variables"):
             if all_factors:
-                if not openai_api_key:
-                    st.error("Please set your OpenAI API key in the environment variables.")
-                else:
-                    with st.spinner("Analyzing factors to suggest variables..."):
-                        try:
-                            suggested_treatment, suggested_outcome = suggest_variables_from_factors(all_factors, openai_api_key)
-                            if suggested_treatment and suggested_outcome:
-                                st.session_state.suggested_treatment = suggested_treatment
-                                st.session_state.suggested_outcome = suggested_outcome
-                                st.session_state.treatment_input = suggested_treatment
-                                st.session_state.outcome_input = suggested_outcome
-                                st.success(f"Variables suggested! Treatment: {suggested_treatment}, Outcome: {suggested_outcome}")
-                            else:
-                                st.warning("Could not generate suggestions. Please check your input factors.")
-                        except Exception as e:
-                            st.error(f"Error during suggestion: {str(e)}")
+                with st.spinner("Analyzing factors to suggest variables..."):
+                    try:
+                        suggested_treatment, suggested_outcome = suggest_variables_from_factors(all_factors, openai_api_key)
+                        if suggested_treatment and suggested_outcome:
+                            st.session_state.suggested_treatment = suggested_treatment
+                            st.session_state.suggested_outcome = suggested_outcome
+                            st.session_state.treatment_input = suggested_treatment
+                            st.session_state.outcome_input = suggested_outcome
+                            st.success(f"Variables suggested! Treatment: {suggested_treatment}, Outcome: {suggested_outcome}")
+                        else:
+                            st.warning("Could not generate suggestions. Please check your input factors.")
+                    except Exception as e:
+                        st.error(f"Error during suggestion: {str(e)}")
             else:
-                st.warning("Please enter some factors first.")
+                st.warning(MISSING_FACTORS_ERROR)
 
         # Treatment input with session state
         treatment = st.text_input(
@@ -1684,22 +1694,19 @@ else:
 
             if st.button("Suggest Potential Confounders"):
                 if all_factors and treatment and outcome:
-                    if not openai_api_key:
-                        st.error("Please set your OpenAI API key in the environment variables.")
-                    else:
-                        with st.spinner("Analyzing potential confounding variables..."):
-                            try:
-                                suggested_confounders = suggest_confounders_from_factors(
-                                    treatment, outcome, all_factors, openai_api_key
-                                )
-                                if suggested_confounders:
-                                    st.subheader("Potential Confounding Variables")
-                                    formatted_confounders = format_confounder_output(suggested_confounders)
-                                    st.markdown(formatted_confounders)
-                            except Exception as e:
-                                st.error(f"Error during confounders suggestion: {str(e)}")
+                    with st.spinner("Analyzing potential confounding variables..."):
+                        try:
+                            suggested_confounders = suggest_confounders_from_factors(
+                                treatment, outcome, all_factors, openai_api_key
+                            )
+                            if suggested_confounders:
+                                st.subheader("Potential Confounding Variables")
+                                formatted_confounders = format_confounder_output(suggested_confounders)
+                                st.markdown(formatted_confounders)
+                        except Exception as e:
+                            st.error(f"Error during confounders suggestion: {str(e)}")
                 else:
-                    st.warning("Please enter all required variables (factors, treatment, and outcome).")
+                    st.warning(MISSING_VARIABLES_ERROR)
 
             if st.button("Suggest Pair-wise Relationships (DAG)"):
                 if all_factors and treatment and outcome:
@@ -1725,7 +1732,7 @@ else:
                                 st.error(f"An error occurred while analyzing relationships: {str(e)}")
                                 st.info("Try simplifying your input or checking for any special characters in variable names.")
                 else:
-                    st.warning("Please enter all required variables (factors, treatment, and outcome).")
+                    st.warning(MISSING_VARIABLES_ERROR)
 
         elif analysis_type == "Identification Suggestion":
             st.markdown("""
@@ -1761,7 +1768,7 @@ else:
                             except Exception as e:
                                 st.error(f"Error during backdoor set suggestion: {str(e)}")
                 else:
-                    st.warning("Please enter all required variables (factors, treatment, and outcome).")
+                    st.warning(MISSING_VARIABLES_ERROR)
 
             if st.button("Suggest Mediator Set"):
                 if all_factors and treatment and outcome:
@@ -1781,7 +1788,7 @@ else:
                             except Exception as e:
                                 st.error(f"Error during mediator suggestion: {str(e)}")
                 else:
-                    st.warning("Please enter all required variables (factors, treatment, and outcome).")
+                    st.warning(MISSING_VARIABLES_ERROR)
 
             if st.button("Suggest Instrumental Variables (IVs)"):
                 if all_factors and treatment and outcome:
@@ -1801,7 +1808,7 @@ else:
                             except Exception as e:
                                 st.error(f"Error during IV suggestion: {str(e)}")
                 else:
-                    st.warning("Please enter all required variables (factors, treatment, and outcome).")
+                    st.warning(MISSING_VARIABLES_ERROR)
 
         elif analysis_type == "Validation Suggestion":
             st.markdown("""
