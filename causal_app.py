@@ -6,6 +6,7 @@ from pywhyllm import RelationshipStrategy
 import os
 import json
 from dotenv import load_dotenv
+import openai
 
 # Set page config
 st.set_page_config(
@@ -732,6 +733,56 @@ def generate_critique_explanation(category, critique):
     else:
         return "Consider this point to improve your causal analysis."
 
+def suggest_variables_from_factors(factors, openai_api_key):
+    """Use OpenAI to suggest treatment and outcome variables from the input factors."""
+    if not factors:
+        return None, None
+    
+    openai.api_key = openai_api_key
+    
+    try:
+        # Create a prompt for the OpenAI API
+        prompt = f"""Given these factors in a causal analysis context: {', '.join(factors)}
+
+Please identify:
+1. The most likely treatment variable (the cause/intervention)
+2. The most likely outcome variable (the effect to measure)
+
+Format your response exactly like this example:
+treatment: exercise
+outcome: weight loss
+
+Your response:"""
+
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a causal inference expert helping to identify treatment and outcome variables."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=100
+        )
+        
+        # Parse the response
+        suggestion = response.choices[0].message.content.strip()
+        lines = suggestion.split('\n')
+        
+        treatment = None
+        outcome = None
+        
+        for line in lines:
+            if line.startswith('treatment:'):
+                treatment = line.replace('treatment:', '').strip()
+            elif line.startswith('outcome:'):
+                outcome = line.replace('outcome:', '').strip()
+        
+        return treatment, outcome
+        
+    except Exception as e:
+        st.error(f"Error suggesting variables: {str(e)}")
+        return None, None
+
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 
@@ -795,23 +846,43 @@ else:
         """
         
         default_factors = "smoking, lung cancer, exercise habits, air pollution exposure"
+        if 'suggested_treatment' not in st.session_state:
+            st.session_state.suggested_treatment = None
+        if 'suggested_outcome' not in st.session_state:
+            st.session_state.suggested_outcome = None
         all_factors_str = st.text_area(
             "📝 Enter all relevant factors (comma-separated):", 
             value=default_factors,
-            help=factors_help
+            help=factors_help,
+            key="factors_input"
         )
-        all_factors = [factor.strip() for factor in all_factors_str.split(',')]
+        all_factors = [factor.strip() for factor in all_factors_str.split(',') if factor.strip()]
 
+        # Add a button to suggest variables
+        if st.button("🎯 Suggest Treatment and Outcome Variables"):
+            if all_factors:
+                with st.spinner("Analyzing factors to suggest variables..."):
+                    suggested_treatment, suggested_outcome = suggest_variables_from_factors(all_factors, openai_api_key)
+                    if suggested_treatment and suggested_outcome:
+                        st.session_state.suggested_treatment = suggested_treatment
+                        st.session_state.suggested_outcome = suggested_outcome
+                        st.success("Variables suggested based on your factors!")
+            else:
+                st.warning("Please enter some factors first.")
+
+        # Update the treatment and outcome input fields to show suggestions
         treatment = st.text_input(
             "🎯 Enter the treatment variable:",
-            value="smoking",
-            help="The variable whose effect you want to study"
+            value=st.session_state.suggested_treatment if st.session_state.suggested_treatment else "smoking",
+            help="The variable whose effect you want to study. " + 
+                 (f"Suggested treatment: {st.session_state.suggested_treatment}" if st.session_state.suggested_treatment else "")
         )
 
         outcome = st.text_input(
             "🎯 Enter the outcome variable:",
-            value="lung cancer",
-            help="The variable you want to measure the effect on"
+            value=st.session_state.suggested_outcome if st.session_state.suggested_outcome else "lung cancer",
+            help="The variable you want to measure the effect on. " + 
+                 (f"Suggested outcome: {st.session_state.suggested_outcome}" if st.session_state.suggested_outcome else "")
         )
 
     with col2:
