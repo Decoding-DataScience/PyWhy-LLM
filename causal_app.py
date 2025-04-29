@@ -505,43 +505,111 @@ def format_backdoor_set(backdoor_set):
         
         st.markdown("## Suggested Backdoor Set")
         
+        # Create a visual representation of the backdoor set
+        dot = graphviz.Digraph()
+        dot.attr(rankdir='LR')  # Left to right layout
+        
+        # Define node styles
+        dot.attr('node', 
+            shape='rect',
+            style='rounded,filled',
+            fillcolor='white',
+            fontname='Arial',
+            margin='0.3,0.2'
+        )
+        
+        # Define edge styles
+        dot.attr('edge',
+            color='#1E88E5',
+            penwidth='2'
+        )
+        
+        # Track nodes to avoid duplicates
+        nodes = set()
+        
+        # Add nodes and edges for the backdoor set
         if isinstance(backdoor_set, (list, tuple)):
             for var in backdoor_set:
                 if isinstance(var, dict):
-                    format_variables([var])
+                    name = var.get('name', '')
+                    confidence = var.get('confidence', 'medium')
+                    if name:
+                        if name not in nodes:
+                            dot.node(name, name)
+                            nodes.add(name)
+                            
+                        # Format the variable details
+                        st.markdown(f"### {name}")
+                        confidence_color = "#27ae60" if confidence == "high" else "#f39c12" if confidence == "medium" else "#e74c3c"
+                        st.markdown(f"""
+                            <div style='color: {confidence_color}; font-weight: bold; margin-bottom: 10px;'>
+                                Confidence Level: {confidence.title()}
+                            </div>
+                        """, unsafe_allow_html=True)
+                        
                 elif isinstance(var, (list, tuple)):
-                    # Format as a relationship
-                    source = str(var[0]) if len(var) > 0 else ''
-                    target = str(var[1]) if len(var) > 1 else ''
-                    confidence = 'medium'
-                    
-                    st.markdown(f"### {source} → {target}")
-                    st.markdown(f"""
-                        <div style='color: #f39c12; font-weight: bold; margin-bottom: 10px;'>
-                            Confidence Level: {confidence.title()}
-                        </div>
-                    """, unsafe_allow_html=True)
+                    # Handle relationship format
+                    if len(var) >= 2:
+                        source = str(var[0])
+                        target = str(var[1])
+                        
+                        # Add nodes if they don't exist
+                        if source not in nodes:
+                            dot.node(source, source)
+                            nodes.add(source)
+                        if target not in nodes:
+                            dot.node(target, target)
+                            nodes.add(target)
+                            
+                        # Add edge
+                        dot.edge(source, target)
+                        
+                        # Format the relationship
+                        st.markdown(f"### {source} → {target}")
+                        st.markdown("This relationship is part of the backdoor adjustment set.")
                 else:
-                    # Handle single string/value
-                    st.markdown(f"### {str(var)}")
-                    st.markdown("""
-                        <div style='color: #f39c12; font-weight: bold; margin-bottom: 10px;'>
-                            Confidence Level: Medium
-                        </div>
-                    """, unsafe_allow_html=True)
+                    # Handle single variable
+                    var_name = str(var)
+                    if var_name not in nodes:
+                        dot.node(var_name, var_name)
+                        nodes.add(var_name)
+                    st.markdown(f"### {var_name}")
+                    st.markdown("This variable should be included in the backdoor adjustment set.")
+        
+        # Display the visualization
+        if nodes:
+            st.graphviz_chart(dot)
         
         # Add explanation section
-        st.markdown("### 🔍 Understanding Backdoor Adjustment")
-        st.markdown("""
-        1. Backdoor variables help control for confounding
-        2. Adjusting for these variables reduces bias in causal estimates
-        3. Consider the feasibility of measuring each variable
-        """)
+        with st.expander("🔍 Understanding Backdoor Adjustment", expanded=True):
+            st.markdown("""
+            ### What is Backdoor Adjustment?
+            Backdoor adjustment helps control for confounding variables in causal analysis by:
+            1. Identifying variables that affect both treatment and outcome
+            2. Blocking "backdoor paths" that create spurious associations
+            3. Enabling unbiased estimation of causal effects
+            
+            ### How to Use These Variables
+            - Include these variables in your analysis model
+            - Collect data on these variables during your study
+            - Consider stratification or matching based on these variables
+            - Document any unmeasured confounders
+            """)
+        
+        # Add recommendations
+        with st.expander("📊 Recommendations", expanded=True):
+            st.markdown("""
+            1. Prioritize collecting data on high-confidence backdoor variables
+            2. Use appropriate statistical methods to control for these variables
+            3. Consider both direct and indirect paths in your analysis
+            4. Validate the completeness of the backdoor set with domain experts
+            """)
         
     except Exception as e:
         st.error(f"""
             Unable to format backdoor set. Please ensure the input is in the correct format.
             Expected format: List of variables or relationships that form the backdoor adjustment set.
+            Error: {str(e)}
         """)
         return None
 
@@ -837,13 +905,15 @@ def suggest_variables_from_factors(factors, openai_api_key):
         # Create a prompt for the OpenAI API
         prompt = f"""Given these factors in a causal analysis context: {', '.join(factors)}
 
-Please identify:
+For a causal analysis similar to the example of how parental income and tutoring affect school quality and ultimately job offers through college admission, please identify:
 1. The most likely treatment variable (the cause/intervention)
-2. The most likely outcome variable (the effect to measure)
+2. The most likely outcome variable (the final effect to measure)
+
+Consider the natural flow of causation and choose variables that would have a meaningful causal relationship.
 
 Format your response exactly like this example:
-treatment: exercise
-outcome: weight loss
+treatment: School Quality
+outcome: Job Offer
 
 Your response:"""
 
@@ -1027,6 +1097,92 @@ Your response:"""
             
     except Exception as e:
         st.error(f"Error suggesting relationships: {str(e)}")
+        return None
+
+def suggest_backdoor_from_factors(treatment, outcome, factors, openai_api_key):
+    """Use OpenAI to suggest backdoor adjustment set."""
+    from openai import OpenAI
+    
+    if not factors or not treatment or not outcome:
+        return None
+    
+    try:
+        client = OpenAI(api_key=openai_api_key)
+        
+        # Create a prompt for the OpenAI API
+        prompt = f"""Given a causal analysis with:
+Treatment: {treatment}
+Outcome: {outcome}
+All factors: {', '.join(factors)}
+
+Please identify the backdoor adjustment set - variables that should be controlled for to estimate the causal effect of {treatment} on {outcome}.
+
+Consider:
+1. Variables that affect both treatment and outcome
+2. Variables that create backdoor paths
+3. Variables that might confound the relationship
+
+Format your response as a list of variables with their roles, like this:
+[
+    ["parental_income", "affects both school quality and college admission"],
+    ["tutoring", "mediates between income and school quality"],
+    ["student_motivation", "affects both school performance and job prospects"]
+]
+
+Your response:"""
+
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a causal inference expert helping to identify backdoor adjustment sets."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=200
+        )
+        
+        # Parse the response
+        try:
+            suggestion = response.choices[0].message.content.strip()
+            
+            # Clean up the response
+            suggestion = suggestion.replace("'", '"')
+            
+            # Extract the list part from the response
+            import re
+            list_pattern = r'\[([\s\S]*)\]'
+            match = re.search(list_pattern, suggestion)
+            if match:
+                suggestion = f"[{match.group(1)}]"
+            
+            # Parse the response
+            try:
+                backdoor_set = json.loads(suggestion)
+            except json.JSONDecodeError:
+                import ast
+                backdoor_set = ast.literal_eval(suggestion)
+            
+            # Format the backdoor set
+            formatted_set = []
+            if isinstance(backdoor_set, list):
+                for var in backdoor_set:
+                    if isinstance(var, (list, tuple)) and len(var) >= 2:
+                        name = str(var[0]).strip()
+                        explanation = str(var[1]).strip()
+                        formatted_set.append({
+                            "name": name,
+                            "explanation": explanation,
+                            "confidence": "high" if "both" in explanation.lower() else "medium"
+                        })
+            
+            return formatted_set if formatted_set else None
+            
+        except Exception as e:
+            st.error(f"Error parsing backdoor set suggestion: {str(e)}")
+            return None
+            
+    except Exception as e:
+        st.error(f"Error suggesting backdoor set: {str(e)}")
         return None
 
 load_dotenv()
@@ -1254,13 +1410,25 @@ else:
             identifier = IdentificationSuggester(llm_model)
 
             if st.button("Suggest Backdoor Set"):
-                if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
-                    suggested_backdoor = identifier.suggest_backdoor(treatment, outcome, all_factors, st.session_state.domain_expertises)
-                    st.subheader("Suggested Backdoor Set:")
-                    formatted_backdoor = format_backdoor_set(convert_tuples_to_lists(suggested_backdoor))
-                    st.markdown(formatted_backdoor)
+                if all_factors and treatment and outcome:
+                    if not openai_api_key:
+                        st.error("Please set your OpenAI API key in the environment variables.")
+                    else:
+                        with st.spinner("Analyzing variables to identify backdoor adjustment set..."):
+                            try:
+                                suggested_backdoor = suggest_backdoor_from_factors(
+                                    treatment, outcome, all_factors, openai_api_key
+                                )
+                                if suggested_backdoor:
+                                    st.success("Successfully identified backdoor adjustment set!")
+                                    formatted_backdoor = format_backdoor_set(suggested_backdoor)
+                                    st.markdown(formatted_backdoor)
+                                else:
+                                    st.warning("No clear backdoor adjustment set could be identified. Please check your input variables.")
+                            except Exception as e:
+                                st.error(f"Error during backdoor set suggestion: {str(e)}")
                 else:
-                    st.warning("Please ensure treatment, outcome, factors, and domain expertises are provided.")
+                    st.warning("Please enter all required variables (factors, treatment, and outcome).")
 
             if st.button("Suggest Mediator Set"):
                 if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
