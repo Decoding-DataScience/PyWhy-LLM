@@ -425,71 +425,97 @@ def format_confounder_output(confounders):
     return "\n".join(formatted_output)
 
 def format_relationship_output(relationships):
-    """Format relationships into readable text with explanations."""
+    """Format the causal relationships output with HTML/CSS styling"""
     if not relationships:
         return "_No relationships identified._"
     
-    formatted_output = []
-    formatted_output.append('<div class="output-section">')
+    output = '<div class="output-section">'
+    output += '<div class="section-title">Identified Causal Relationships</div>'
     
-    def format_name(name):
-        """Format variable names consistently."""
-        return str(name).replace('_', ' ').strip().title()
-    
-    def get_confidence_class(score):
-        """Get CSS class for confidence level."""
-        if score > 0.7:
-            return "confidence-high"
-        elif score > 0.4:
-            return "confidence-medium"
-        return "confidence-low"
-    
+    # Handle both dictionary and tuple/list formats
     if isinstance(relationships, (list, tuple)):
         for rel in relationships:
             if isinstance(rel, (list, tuple)) and len(rel) >= 2:
-                source = format_name(rel[0])
-                target = format_name(rel[1])
+                # Handle tuple format (source, target, confidence_score)
+                source = str(rel[0]).replace('_', ' ').title()
+                target = str(rel[1]).replace('_', ' ').title()
+                confidence = 'medium'  # Default confidence
+                confidence_score = None
                 
-                formatted_output.append('<div class="output-item">')
-                formatted_output.append(f'<h4>{source} <span class="relationship-arrow">➜</span> {target}</h4>')
+                if len(rel) >= 3 and isinstance(rel[2], (int, float)):
+                    confidence_score = rel[2]
+                    confidence = 'high' if confidence_score > 0.7 else 'medium' if confidence_score > 0.4 else 'low'
                 
-                if len(rel) == 3 and isinstance(rel[2], (int, float)):
-                    confidence_class = get_confidence_class(rel[2])
-                    formatted_output.extend([
-                        f'<p>Confidence Level: <span class="{confidence_class}">{get_confidence_level(rel[2])}</span></p>',
-                        f'<p>Relationship Strength: {rel[2]:.2f}</p>',
-                        f'<p>💡 {source} appears to have a {get_confidence_level(rel[2]).lower()} influence on {target}.</p>'
-                    ])
-                else:
-                    formatted_output.extend([
-                        '<p>Relationship Type: Direct</p>',
-                        f'<p>💡 {source} may influence {target} directly.</p>'
-                    ])
-                formatted_output.append('</div>')
+                output += f'''
+                    <div class="output-item">
+                        <div class="confidence-level {confidence}-confidence">
+                            Confidence: {confidence.title()}
+                        </div>
+                        <div class="relationship">
+                            <span class="cause">{source}</span>
+                            <span class="arrow">→</span>
+                            <span class="effect">{target}</span>
+                        </div>
+                '''
+                
+                if confidence_score is not None:
+                    output += f'''
+                        <div class="explanation-box">
+                            <strong>Relationship Strength:</strong> {confidence_score:.2f}
+                        </div>
+                    '''
+                
+                output += f'''
+                        <div class="recommendation-box">
+                            <strong>Recommendation:</strong> {get_relationship_recommendation(confidence)}
+                        </div>
+                    </div>
+                '''
+    else:
+        # Handle dictionary format
+        for rel in relationships:
+            confidence = rel.get('confidence', 'medium').lower()
+            cause = str(rel.get('cause', '')).replace('_', ' ').title()
+            effect = str(rel.get('effect', '')).replace('_', ' ').title()
+            
+            output += f'''
+                <div class="output-item">
+                    <div class="confidence-level {confidence}-confidence">
+                        Confidence: {confidence.title()}
+                    </div>
+                    <div class="relationship">
+                        <span class="cause">{cause}</span>
+                        <span class="arrow">→</span>
+                        <span class="effect">{effect}</span>
+                    </div>
+                    <div class="explanation-box">
+                        <strong>Explanation:</strong> {rel.get('explanation', 'Potential causal relationship identified.')}
+                    </div>
+                    <div class="recommendation-box">
+                        <strong>Recommendation:</strong> {rel.get('recommendation', get_relationship_recommendation(confidence))}
+                    </div>
+                </div>
+            '''
     
-    # Add explanation section
-    formatted_output.extend([
-        '<div class="explanation-box">',
-        '<h4>🔍 Understanding These Relationships</h4>',
-        '<ul>',
-        '<li>Strong relationships suggest direct causal effects</li>',
-        '<li>Medium relationships may indicate indirect effects</li>',
-        '<li>Low confidence relationships need further investigation</li>',
-        '</ul>',
-        '</div>',
-        '<div class="recommendation-box">',
-        '<h4>📊 Recommendations</h4>',
-        '<ol>',
-        '<li>Focus on strong relationships for primary analysis</li>',
-        '<li>Consider indirect effects in your model</li>',
-        '<li>Validate relationships with domain experts</li>',
-        '<li>Look for potential mediating variables</li>',
-        '</ol>',
-        '</div>',
-        '</div>'
-    ])
-    
-    return "\n".join(formatted_output)
+    output += '</div>'
+    return output
+
+def get_relationship_recommendation(confidence):
+    """Generate recommendations based on confidence level"""
+    if confidence == 'high':
+        return "Consider this relationship as a primary focus for your causal analysis."
+    elif confidence == 'medium':
+        return "Further investigation may be needed to strengthen evidence for this relationship."
+    else:
+        return "Additional data or expert validation recommended before including in analysis."
+
+def get_confidence_level(score):
+    """Convert numerical score to confidence level text"""
+    if score > 0.7:
+        return "High"
+    elif score > 0.4:
+        return "Medium"
+    return "Low"
 
 def format_domain_expertises(expertises):
     """Format domain expertises into readable text."""
@@ -608,60 +634,6 @@ def format_variables(variables):
                 </div>
                 <div class="recommendation-box">
                     <strong>Recommendation:</strong> {var.get('recommendation', '')}
-                </div>
-            </div>
-        '''
-    
-    output += '</div>'
-    return output
-
-def format_relationship_output(relationships):
-    """Format the causal relationships output with HTML/CSS styling"""
-    output = '<div class="output-section">'
-    output += '<div class="section-title">Identified Causal Relationships</div>'
-    
-    for rel in relationships:
-        confidence = rel.get('confidence', 'medium').lower()
-        output += f'''
-            <div class="output-item">
-                <div class="confidence-level {confidence}-confidence">
-                    Confidence: {confidence.title()}
-                </div>
-                <div class="relationship">
-                    <span class="cause">{rel.get('cause', '')}</span>
-                    <span class="arrow">→</span>
-                    <span class="effect">{rel.get('effect', '')}</span>
-                </div>
-                <div class="explanation-box">
-                    <strong>Explanation:</strong> {rel.get('explanation', '')}
-                </div>
-                <div class="recommendation-box">
-                    <strong>Recommendation:</strong> {rel.get('recommendation', '')}
-                </div>
-            </div>
-        '''
-    
-    output += '</div>'
-    return output
-
-def format_critiques(critiques):
-    """Format the critiques output with HTML/CSS styling"""
-    output = '<div class="output-section">'
-    output += '<div class="section-title">Analysis Critiques</div>'
-    
-    for critique in critiques:
-        confidence = critique.get('confidence', 'medium').lower()
-        output += f'''
-            <div class="output-item">
-                <div class="confidence-level {confidence}-confidence">
-                    Confidence: {confidence.title()}
-                </div>
-                <div class="critique-point">{critique.get('point', '')}</div>
-                <div class="explanation-box">
-                    <strong>Details:</strong> {critique.get('details', '')}
-                </div>
-                <div class="recommendation-box">
-                    <strong>Suggestion:</strong> {critique.get('suggestion', '')}
                 </div>
             </div>
         '''
