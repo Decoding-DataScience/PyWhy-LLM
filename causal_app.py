@@ -793,6 +793,101 @@ Your response:"""
             st.error(f"Error suggesting variables: {error_msg}")
         return None, None
 
+def suggest_confounders_from_factors(treatment, outcome, factors, openai_api_key):
+    """Use OpenAI to suggest potential confounding variables."""
+    from openai import OpenAI
+    
+    if not factors or not treatment or not outcome:
+        return None
+    
+    try:
+        client = OpenAI(api_key=openai_api_key)
+        
+        prompt = f"""Given:
+- Treatment variable: {treatment}
+- Outcome variable: {outcome}
+- All factors: {', '.join(factors)}
+
+Please identify potential confounding variables that might affect both the treatment and outcome.
+Consider variables that could create spurious associations.
+
+Format your response as a list of confounders with confidence levels (high/medium/low) like this:
+{{"variable1": "high", "variable2": "medium"}}
+
+Your response:"""
+
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a causal inference expert helping to identify confounding variables."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=150
+        )
+        
+        # Parse the response
+        try:
+            suggestion = response.choices[0].message.content.strip()
+            confounders = json.loads(suggestion)
+            return confounders
+        except json.JSONDecodeError:
+            st.error("Error parsing the confounders suggestion. Please try again.")
+            return None
+            
+    except Exception as e:
+        st.error(f"Error suggesting confounders: {str(e)}")
+        return None
+
+def suggest_relationships_from_factors(treatment, outcome, factors, openai_api_key):
+    """Use OpenAI to suggest pair-wise relationships for DAG."""
+    from openai import OpenAI
+    
+    if not factors or not treatment or not outcome:
+        return None
+    
+    try:
+        client = OpenAI(api_key=openai_api_key)
+        
+        prompt = f"""Given:
+- Treatment variable: {treatment}
+- Outcome variable: {outcome}
+- All factors: {', '.join(factors)}
+
+Please identify potential causal relationships between these variables.
+Consider direct and indirect effects, and provide confidence levels.
+
+Format your response as a list of relationships with confidence scores (0-1) like this:
+[
+    {{"source": "var1", "target": "var2", "confidence": 0.8}},
+    {{"source": "var2", "target": "var3", "confidence": 0.6}}
+]
+
+Your response:"""
+
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a causal inference expert helping to identify relationships between variables."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=200
+        )
+        
+        # Parse the response
+        try:
+            suggestion = response.choices[0].message.content.strip()
+            relationships = json.loads(suggestion)
+            return relationships
+        except json.JSONDecodeError:
+            st.error("Error parsing the relationships suggestion. Please try again.")
+            return None
+            
+    except Exception as e:
+        st.error(f"Error suggesting relationships: {str(e)}")
+        return None
+
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 
@@ -933,24 +1028,42 @@ else:
                     st.warning("Please enter the relevant factors.")
 
             if st.button("Suggest Potential Confounders"):
-                if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
-                    suggested_confounders = modeler.suggest_confounders(treatment, outcome, all_factors, st.session_state.domain_expertises)
-                    st.subheader("Potential Confounding Variables")
-                    formatted_confounders = format_confounder_output(convert_tuples_to_lists(suggested_confounders))
-                    st.markdown(formatted_confounders)
+                if all_factors and treatment and outcome:
+                    if not openai_api_key:
+                        st.error("Please set your OpenAI API key in the environment variables.")
+                    else:
+                        with st.spinner("Analyzing potential confounding variables..."):
+                            try:
+                                suggested_confounders = suggest_confounders_from_factors(
+                                    treatment, outcome, all_factors, openai_api_key
+                                )
+                                if suggested_confounders:
+                                    st.subheader("Potential Confounding Variables")
+                                    formatted_confounders = format_confounder_output(suggested_confounders)
+                                    st.markdown(formatted_confounders)
+                            except Exception as e:
+                                st.error(f"Error during confounders suggestion: {str(e)}")
                 else:
-                    st.warning("Please ensure all required information is provided.")
+                    st.warning("Please enter all required variables (factors, treatment, and outcome).")
 
             if st.button("Suggest Pair-wise Relationships (DAG)"):
-                if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
-                    suggested_dag = modeler.suggest_relationships(
-                        treatment, outcome, all_factors, st.session_state.domain_expertises, RelationshipStrategy.Pairwise
-                    )
-                    st.subheader("Suggested Pair-wise Relationships (Potential DAG Edges):")
-                    formatted_dag = format_relationship_output(convert_tuples_to_lists(suggested_dag))
-                    st.markdown(formatted_dag)
+                if all_factors and treatment and outcome:
+                    if not openai_api_key:
+                        st.error("Please set your OpenAI API key in the environment variables.")
+                    else:
+                        with st.spinner("Analyzing potential relationships between variables..."):
+                            try:
+                                suggested_relationships = suggest_relationships_from_factors(
+                                    treatment, outcome, all_factors, openai_api_key
+                                )
+                                if suggested_relationships:
+                                    st.subheader("Suggested Pair-wise Relationships (Potential DAG Edges)")
+                                    formatted_relationships = format_relationship_output(suggested_relationships)
+                                    st.markdown(formatted_relationships)
+                            except Exception as e:
+                                st.error(f"Error during relationship suggestion: {str(e)}")
                 else:
-                    st.warning("Please ensure treatment, outcome, factors, and domain expertises are provided.")
+                    st.warning("Please enter all required variables (factors, treatment, and outcome).")
 
         elif analysis_type == "Identification Suggestion":
             st.markdown("""
