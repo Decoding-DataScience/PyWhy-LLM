@@ -91,28 +91,44 @@ st.markdown("""
     /* Step Box Styles */
     .step-box {
         background-color: #f8f9fa;
-        padding: 20px;
-        border-left: 4px solid #3498db;
+        padding: 25px;
+        border-radius: 10px;
         margin: 15px 0;
-        border-radius: 0 10px 10px 0;
+        border-left: 4px solid #3498db;
     }
     
     .step-item {
         background-color: white;
-        padding: 15px;
-        margin: 12px 0;
+        padding: 20px;
+        margin: 15px 0;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease-in-out;
+    }
+    
+    .step-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
     
     .step-item p {
         margin: 0;
         padding: 0;
         color: #2c3e50;
+        line-height: 1.6;
     }
     
     .step-item strong {
         color: #3498db;
+        font-size: 1.1em;
+        display: block;
+        margin-bottom: 8px;
+    }
+    
+    .step-description {
+        color: #5a6c7d !important;
+        font-size: 0.95em;
+        margin-top: 5px !important;
     }
     
     /* Output Section Styles */
@@ -148,15 +164,17 @@ st.markdown("""
     
     /* Expander Styling */
     .streamlit-expanderHeader {
-        font-size: 1.8em !important;
+        font-size: 1.2em !important;
         font-weight: 600 !important;
         color: #2c3e50 !important;
         background-color: transparent !important;
+        padding: 15px !important;
     }
     
     .streamlit-expanderContent {
-        background-color: #f8f9fa !important;
+        background-color: #ffffff !important;
         border-radius: 0 0 10px 10px !important;
+        padding: 20px !important;
     }
     
     /* Select Box Styling */
@@ -701,27 +719,27 @@ else:
     st.markdown('<h2 class="section-header">Quick Start Guide</h2>', unsafe_allow_html=True)
     with st.expander("📚 How to Use PyWhy-LLM", expanded=True):
         st.markdown("""
-        <div class="step-box">
-            <div class="step-item">
-                <p><strong>1. 🎯 Select your analysis step</strong></p>
-                <p>Choose from Model Suggestion, Identification Suggestion, or Validation Suggestion</p>
+            <div class="step-box">
+                <div class="step-item">
+                    <p><strong>1. 🎯 Select your analysis step</strong></p>
+                    <p class="step-description">Choose from Model Suggestion, Identification Suggestion, or Validation Suggestion</p>
+                </div>
+                
+                <div class="step-item">
+                    <p><strong>2. 📝 Enter your variables</strong></p>
+                    <p class="step-description">Input your treatment, outcome, and other relevant variables</p>
+                </div>
+                
+                <div class="step-item">
+                    <p><strong>3. 📊 Follow the guided process</strong></p>
+                    <p class="step-description">Complete each step as directed by the interface</p>
+                </div>
+                
+                <div class="step-item">
+                    <p><strong>4. 📋 Review results</strong></p>
+                    <p class="step-description">Analyze the output and insights provided</p>
+                </div>
             </div>
-            
-            <div class="step-item">
-                <p><strong>2. 🔄 Enter your variables</strong></p>
-                <p>Input your treatment, outcome, and other relevant variables</p>
-            </div>
-            
-            <div class="step-item">
-                <p><strong>3. 📊 Follow the guided process</strong></p>
-                <p>Complete each step as directed by the interface</p>
-            </div>
-            
-            <div class="step-item">
-                <p><strong>4. 📋 Review results</strong></p>
-                <p>Analyze the output and insights provided</p>
-            </div>
-        </div>
         """, unsafe_allow_html=True)
 
     # Main Analysis Interface
