@@ -334,6 +334,7 @@ def apply_custom_css():
     """, unsafe_allow_html=True)
 
 def convert_tuples_to_lists(obj):
+    """Convert all tuples to lists recursively in a nested structure."""
     if isinstance(obj, tuple):
         return list(obj)
     elif isinstance(obj, list):
@@ -553,35 +554,113 @@ def format_variables(variables):
     if not variables:
         return st.markdown("_No variables identified._")
     
-    st.markdown("## Identified Variables")
+    try:
+        # Convert tuples to lists if needed
+        variables = convert_tuples_to_lists(variables)
+        
+        st.markdown("## Identified Variables")
+        
+        if isinstance(variables, list):
+            for var in variables:
+                if isinstance(var, dict):
+                    # Handle dictionary format
+                    confidence = var.get('confidence', 'medium').lower()
+                    name = var.get('name', '')
+                    impact = var.get('impact', '')
+                    recommendation = var.get('recommendation', '')
+                elif isinstance(var, (list, tuple)):
+                    # Handle list/tuple format
+                    name = str(var[0]) if len(var) > 0 else ''
+                    confidence = 'medium'
+                    impact = str(var[1]) if len(var) > 1 else ''
+                    recommendation = str(var[2]) if len(var) > 2 else ''
+                else:
+                    # Handle single string/value
+                    name = str(var)
+                    confidence = 'medium'
+                    impact = ''
+                    recommendation = ''
+                
+                confidence_color = "#27ae60" if confidence == "high" else "#f39c12" if confidence == "medium" else "#e74c3c"
+                
+                st.markdown(f"### {name}")
+                st.markdown(f"""
+                    <div style='color: {confidence_color}; font-weight: bold; margin-bottom: 10px;'>
+                        Confidence Level: {confidence.title()}
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                if impact:
+                    st.markdown(f"**Impact:** {impact}")
+                if recommendation:
+                    st.markdown(f"**Recommendation:** {recommendation}")
+        
+        # Add explanation section
+        st.markdown("### 🔍 Understanding Variable Impacts")
+        st.markdown("""
+        1. High confidence variables should be prioritized in your analysis
+        2. Consider both direct and indirect effects of each variable
+        3. Pay attention to variables with strong theoretical support
+        """)
+        
+    except Exception as e:
+        st.error(f"""
+            Unable to format variables. Please ensure the input is in the correct format.
+            Expected format: List of dictionaries with 'name', 'confidence', 'impact', and 'recommendation' fields,
+            or list of lists/tuples with [name, impact, recommendation] format.
+        """)
+        return None
+
+def format_backdoor_set(backdoor_set):
+    """Format the backdoor set with proper styling"""
+    if not backdoor_set:
+        return st.markdown("_No backdoor adjustment set identified._")
     
-    for var in variables:
-        confidence = var.get('confidence', 'medium').lower()
-        name = var.get('name', '')
-        impact = var.get('impact', '')
-        recommendation = var.get('recommendation', '')
+    try:
+        # Convert tuples to lists if needed
+        backdoor_set = convert_tuples_to_lists(backdoor_set)
         
-        confidence_color = "#27ae60" if confidence == "high" else "#f39c12" if confidence == "medium" else "#e74c3c"
+        st.markdown("## Suggested Backdoor Set")
         
-        st.markdown(f"### {name}")
-        st.markdown(f"""
-            <div style='color: {confidence_color}; font-weight: bold; margin-bottom: 10px;'>
-                Confidence Level: {confidence.title()}
-            </div>
-        """, unsafe_allow_html=True)
+        if isinstance(backdoor_set, (list, tuple)):
+            for var in backdoor_set:
+                if isinstance(var, dict):
+                    format_variables([var])
+                elif isinstance(var, (list, tuple)):
+                    # Format as a relationship
+                    source = str(var[0]) if len(var) > 0 else ''
+                    target = str(var[1]) if len(var) > 1 else ''
+                    confidence = 'medium'
+                    
+                    st.markdown(f"### {source} → {target}")
+                    st.markdown(f"""
+                        <div style='color: #f39c12; font-weight: bold; margin-bottom: 10px;'>
+                            Confidence Level: {confidence.title()}
+                        </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    # Handle single string/value
+                    st.markdown(f"### {str(var)}")
+                    st.markdown("""
+                        <div style='color: #f39c12; font-weight: bold; margin-bottom: 10px;'>
+                            Confidence Level: Medium
+                        </div>
+                    """, unsafe_allow_html=True)
         
-        if impact:
-            st.markdown(f"**Impact:** {impact}")
-        if recommendation:
-            st.markdown(f"**Recommendation:** {recommendation}")
-    
-    # Add explanation section
-    st.markdown("### 🔍 Understanding Variable Impacts")
-    st.markdown("""
-    1. High confidence variables should be prioritized in your analysis
-    2. Consider both direct and indirect effects of each variable
-    3. Pay attention to variables with strong theoretical support
-    """)
+        # Add explanation section
+        st.markdown("### 🔍 Understanding Backdoor Adjustment")
+        st.markdown("""
+        1. Backdoor variables help control for confounding
+        2. Adjusting for these variables reduces bias in causal estimates
+        3. Consider the feasibility of measuring each variable
+        """)
+        
+    except Exception as e:
+        st.error(f"""
+            Unable to format backdoor set. Please ensure the input is in the correct format.
+            Expected format: List of variables or relationships that form the backdoor adjustment set.
+        """)
+        return None
 
 def validate_dag_input(dag_str):
     """Validate DAG input and return tuple of (is_valid, dag_dict, error_message)."""
@@ -783,7 +862,7 @@ else:
                 if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
                     suggested_backdoor = identifier.suggest_backdoor(treatment, outcome, all_factors, st.session_state.domain_expertises)
                     st.subheader("Suggested Backdoor Set:")
-                    formatted_backdoor = format_variables(convert_tuples_to_lists(suggested_backdoor))
+                    formatted_backdoor = format_backdoor_set(convert_tuples_to_lists(suggested_backdoor))
                     st.markdown(formatted_backdoor)
                 else:
                     st.warning("Please ensure treatment, outcome, factors, and domain expertises are provided.")
