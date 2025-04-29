@@ -7,6 +7,7 @@ import os
 import json
 from dotenv import load_dotenv
 from openai import OpenAI
+import graphviz
 
 # Set page config
 st.set_page_config(
@@ -592,21 +593,80 @@ def validate_dag_input(dag_str):
         except:
             return False, {}, "❌ Invalid input format. Please use valid JSON or Python dictionary format."
 
+def create_dag_visualization(relationships):
+    """Create a visual DAG using Graphviz."""
+    if not relationships:
+        return None
+    
+    # Create a new directed graph
+    dot = graphviz.Digraph()
+    dot.attr(rankdir='LR')  # Left to right layout
+    
+    # Define node styles
+    dot.attr('node', 
+        shape='rect',
+        style='rounded,filled',
+        fillcolor='white',
+        fontname='Arial',
+        margin='0.3,0.2'
+    )
+    
+    # Define edge styles
+    dot.attr('edge',
+        color='#1E88E5',
+        penwidth='2'
+    )
+    
+    # Track nodes to avoid duplicates
+    nodes = set()
+    
+    # Add nodes and edges
+    for rel in relationships:
+        if isinstance(rel, (list, tuple)) and len(rel) >= 2:
+            source = str(rel[0]).strip()
+            target = str(rel[1]).strip()
+            
+            # Add nodes if they don't exist
+            if source not in nodes:
+                dot.node(source, source)
+                nodes.add(source)
+            if target not in nodes:
+                dot.node(target, target)
+                nodes.add(target)
+            
+            # Add edge with confidence as label if available
+            if len(rel) > 2:
+                confidence = float(rel[2])
+                # Only show confidence label if it's significant
+                if confidence > 0.5:
+                    dot.edge(source, target, label=f" {confidence:.2f}")
+                else:
+                    dot.edge(source, target)
+            else:
+                dot.edge(source, target)
+    
+    return dot
+
 def format_relationship_output(relationships):
-    """Format relationships into readable text with explanations."""
+    """Format relationships into readable text with explanations and visualization."""
     if not relationships:
         return st.markdown("_No relationships identified._")
     
-    st.markdown("## Identified Causal Relationships")
-    
     try:
+        # Create and display the DAG visualization
+        dot = create_dag_visualization(relationships)
+        if dot:
+            st.graphviz_chart(dot)
+        
+        st.markdown("## Detailed Relationship Analysis")
+        
         for rel in relationships:
             if isinstance(rel, (list, tuple)) and len(rel) >= 2:
-                source = str(rel[0]).strip("'[]{}").strip()
-                target = str(rel[1]).strip("'[]{}").strip()
+                source = str(rel[0]).strip()
+                target = str(rel[1]).strip()
                 confidence_score = float(rel[2]) if len(rel) > 2 else 0.5
                 
-                # Determine confidence level based on score
+                # Determine confidence level and color
                 if confidence_score > 0.7:
                     confidence = "high"
                     confidence_color = "#27ae60"
@@ -617,39 +677,46 @@ def format_relationship_output(relationships):
                     confidence = "low"
                     confidence_color = "#e74c3c"
                 
-                st.markdown(f"### {source} → {target}")
-                st.markdown(f"""
-                    <div style='color: {confidence_color}; font-weight: bold; margin-bottom: 10px;'>
-                        Confidence Level: {confidence.title()}
-                        <br>
-                        Relationship Strength: {confidence_score:.2f}
-                    </div>
-                """, unsafe_allow_html=True)
-                
-                # Add relationship explanation
-                explanation = get_relationship_explanation(source, target, confidence)
-                st.markdown(f"**Analysis:** {explanation}")
-                
-                # Add recommendation
-                recommendation = get_relationship_recommendation(confidence)
-                st.markdown(f"**Recommendation:** {recommendation}")
+                # Create expandable section for each relationship
+                with st.expander(f"🔍 {source} → {target}"):
+                    st.markdown(f"""
+                        <div style='color: {confidence_color}; font-weight: bold; margin-bottom: 10px;'>
+                            Confidence Level: {confidence.title()}
+                            <br>
+                            Relationship Strength: {confidence_score:.2f}
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Add relationship explanation
+                    explanation = get_relationship_explanation(source, target, confidence)
+                    st.markdown(f"**Analysis:** {explanation}")
+                    
+                    # Add recommendation
+                    recommendation = get_relationship_recommendation(confidence)
+                    st.markdown(f"**Recommendation:** {recommendation}")
         
         # Add explanation section
-        st.markdown("### 🔍 Understanding These Relationships")
-        st.markdown("""
-        1. Strong relationships (confidence > 0.7) suggest direct causal effects
-        2. Medium relationships (confidence 0.4-0.7) may indicate indirect effects
-        3. Low confidence relationships (< 0.4) need further investigation
-        """)
+        with st.expander("🔍 Understanding These Relationships", expanded=False):
+            st.markdown("""
+            ### Interpreting the Diagram
+            1. **Nodes:** Represent variables in your causal model
+            2. **Arrows:** Show the direction of causal influence
+            3. **Numbers:** Indicate the strength of relationships (0-1)
+            
+            ### Confidence Levels
+            - **High (>0.7):** Strong evidence of direct causal effect
+            - **Medium (0.4-0.7):** Moderate evidence, possible indirect effects
+            - **Low (<0.4):** Weak evidence, needs further investigation
+            """)
         
         # Add next steps
-        st.markdown("### 📊 Next Steps")
-        st.markdown("""
-        1. Focus on high-confidence relationships for primary analysis
-        2. Consider indirect effects through medium-confidence paths
-        3. Validate relationships with domain experts
-        4. Look for potential mediating variables
-        """)
+        with st.expander("📊 Next Steps", expanded=False):
+            st.markdown("""
+            1. Focus on high-confidence relationships for primary analysis
+            2. Consider indirect effects through medium-confidence paths
+            3. Validate relationships with domain experts
+            4. Look for potential mediating variables
+            """)
         
     except Exception as e:
         st.error(f"Error formatting relationships: {str(e)}")
