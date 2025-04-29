@@ -1201,11 +1201,21 @@ Your response:"""
 def suggest_mediator_from_factors(treatment, outcome, factors, openai_api_key):
     """Use OpenAI to suggest mediator variables."""
     if not factors or not treatment or not outcome:
+        st.warning("Missing required inputs: treatment, outcome, and factors are all required.")
         return None
     
     try:
         client = get_openai_client()
         if not client:
+            return None
+
+        # Clean and validate inputs
+        treatment = treatment.strip()
+        outcome = outcome.strip()
+        factors = [f.strip() for f in factors if f.strip()]
+        
+        if not treatment or not outcome or not factors:
+            st.warning("Invalid inputs: treatment, outcome, and factors cannot be empty.")
             return None
 
         prompt = f"""Given a causal analysis with:
@@ -1232,7 +1242,11 @@ Example format:
     ["academic_performance", "links school quality to college prospects", 0.7]
 ]
 
-Ensure your response is a valid JSON array and includes ONLY the array, no additional text."""
+Important:
+- Return ONLY the JSON array, no additional text
+- Each mediator must have all three elements
+- Confidence scores must be between 0 and 1
+- Focus on variables that truly mediate between {treatment} and {outcome}"""
 
         response = client.chat.completions.create(
             model="gpt-4",
@@ -1241,7 +1255,7 @@ Ensure your response is a valid JSON array and includes ONLY the array, no addit
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
-            max_tokens=200
+            max_tokens=300  # Increased for better response
         )
         
         try:
@@ -1250,60 +1264,60 @@ Ensure your response is a valid JSON array and includes ONLY the array, no addit
             # Clean up the response
             suggestion = suggestion.replace("'", '"')  # Replace single quotes with double quotes
             suggestion = suggestion.replace("\n", " ")  # Remove newlines
+            suggestion = suggestion.replace("\t", " ")  # Remove tabs
             
             # Extract just the array part if there's additional text
             import re
-            array_pattern = r'\[(.*)\]'
+            array_pattern = r'\[[\s\S]*\]'  # Less greedy pattern that matches the outermost brackets
             match = re.search(array_pattern, suggestion)
-            if match:
-                suggestion = f"[{match.group(1)}]"
+            if not match:
+                st.warning("Could not find a valid array in the response.")
+                return None
+                
+            suggestion = match.group(0)
             
+            # Try parsing as JSON first
             try:
-                # Try parsing as JSON first
                 mediators = json.loads(suggestion)
-                
-                # Validate the structure
-                if not isinstance(mediators, list):
-                    st.warning("Invalid response format. Expected a list of mediator variables.")
-                    return None
-                
-                for mediator in mediators:
-                    if not isinstance(mediator, list) or len(mediator) < 3:
-                        st.warning("Invalid mediator format. Each mediator should have a name, explanation, and score.")
-                        return None
-                    
-                    # Ensure score is a float between 0 and 1
-                    mediator[2] = float(mediator[2])
-                    if not 0 <= mediator[2] <= 1:
-                        mediator[2] = max(0, min(1, mediator[2]))  # Clamp between 0 and 1
-                
-                return mediators
-                
             except json.JSONDecodeError:
                 # If JSON fails, try Python literal evaluation
-                import ast
                 try:
+                    import ast
                     mediators = ast.literal_eval(suggestion)
-                    
-                    # Apply the same validation as above
-                    if not isinstance(mediators, list):
-                        st.warning("Invalid response format. Expected a list of mediator variables.")
-                        return None
-                    
-                    for mediator in mediators:
-                        if not isinstance(mediator, list) or len(mediator) < 3:
-                            st.warning("Invalid mediator format. Each mediator should have a name, explanation, and score.")
-                            return None
-                        
-                        # Ensure score is a float between 0 and 1
-                        mediator[2] = float(mediator[2])
-                        if not 0 <= mediator[2] <= 1:
-                            mediator[2] = max(0, min(1, mediator[2]))  # Clamp between 0 and 1
-                    
-                    return mediators
                 except:
                     st.warning("Could not parse the mediator suggestions. Please try again.")
                     return None
+            
+            # Validate and clean the mediators
+            if not isinstance(mediators, list):
+                st.warning("Invalid response format. Expected a list of mediator variables.")
+                return None
+            
+            valid_mediators = []
+            for mediator in mediators:
+                try:
+                    if not isinstance(mediator, (list, tuple)) or len(mediator) < 3:
+                        continue
+                    
+                    name = str(mediator[0]).strip()
+                    explanation = str(mediator[1]).strip()
+                    
+                    try:
+                        score = float(mediator[2])
+                        score = max(0.0, min(1.0, score))  # Clamp between 0 and 1
+                    except (ValueError, TypeError):
+                        score = 0.5  # Default score if invalid
+                    
+                    if name and explanation:  # Only include if we have at least a name and explanation
+                        valid_mediators.append([name, explanation, score])
+                except Exception as e:
+                    continue  # Skip invalid mediators instead of failing
+            
+            if not valid_mediators:
+                st.warning("No valid mediator variables could be extracted from the response.")
+                return None
+            
+            return valid_mediators
             
         except Exception as e:
             st.error(f"Error processing mediator suggestions: {str(e)}")
