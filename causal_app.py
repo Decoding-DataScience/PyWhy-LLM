@@ -6,7 +6,7 @@ from pywhyllm import RelationshipStrategy
 import os
 import json
 from dotenv import load_dotenv
-import openai
+from openai import OpenAI
 
 # Set page config
 st.set_page_config(
@@ -735,12 +735,14 @@ def generate_critique_explanation(category, critique):
 
 def suggest_variables_from_factors(factors, openai_api_key):
     """Use OpenAI to suggest treatment and outcome variables from the input factors."""
+    from openai import OpenAI
+    
     if not factors:
         return None, None
     
-    openai.api_key = openai_api_key
-    
     try:
+        client = OpenAI(api_key=openai_api_key)
+        
         # Create a prompt for the OpenAI API
         prompt = f"""Given these factors in a causal analysis context: {', '.join(factors)}
 
@@ -754,7 +756,7 @@ outcome: weight loss
 
 Your response:"""
 
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "You are a causal inference expert helping to identify treatment and outcome variables."},
@@ -780,7 +782,15 @@ Your response:"""
         return treatment, outcome
         
     except Exception as e:
-        st.error(f"Error suggesting variables: {str(e)}")
+        error_msg = str(e)
+        if "openai.ChatCompletion" in error_msg:
+            st.error("""
+                OpenAI API version mismatch. Please update your openai package:
+                1. Run: pip install --upgrade openai
+                2. Restart the application
+            """)
+        else:
+            st.error(f"Error suggesting variables: {error_msg}")
         return None, None
 
 load_dotenv()
@@ -861,12 +871,18 @@ else:
         # Add a button to suggest variables
         if st.button("🎯 Suggest Treatment and Outcome Variables"):
             if all_factors:
-                with st.spinner("Analyzing factors to suggest variables..."):
-                    suggested_treatment, suggested_outcome = suggest_variables_from_factors(all_factors, openai_api_key)
-                    if suggested_treatment and suggested_outcome:
-                        st.session_state.suggested_treatment = suggested_treatment
-                        st.session_state.suggested_outcome = suggested_outcome
-                        st.success("Variables suggested based on your factors!")
+                if not openai_api_key:
+                    st.error("Please set your OpenAI API key in the environment variables.")
+                else:
+                    with st.spinner("Analyzing factors to suggest variables..."):
+                        try:
+                            suggested_treatment, suggested_outcome = suggest_variables_from_factors(all_factors, openai_api_key)
+                            if suggested_treatment and suggested_outcome:
+                                st.session_state.suggested_treatment = suggested_treatment
+                                st.session_state.suggested_outcome = suggested_outcome
+                                st.success("Variables suggested based on your factors!")
+                        except Exception as e:
+                            st.error(f"Error during suggestion: {str(e)}")
             else:
                 st.warning("Please enter some factors first.")
 
