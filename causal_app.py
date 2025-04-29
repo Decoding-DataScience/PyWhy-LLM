@@ -17,188 +17,160 @@ st.set_page_config(
 # Custom CSS for styling
 st.markdown("""
     <style>
+    /* Title Styles */
     .main-title {
-        color: #1E88E5;
-        font-size: 52px;
-        font-weight: bold;
+        font-size: 2.5em;
+        font-weight: 600;
+        color: #2c3e50;
         margin-bottom: 10px;
         text-align: center;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-        background: linear-gradient(45deg, #1E88E5, #1565C0);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
         padding: 20px 0;
     }
+    
     .attribution {
         text-align: center;
-        font-size: 18px;
-        color: #424242;
+        font-size: 1em;
+        color: #666;
         margin-bottom: 30px;
     }
+    
     .attribution a {
-        color: #1E88E5;
+        color: #3498db;
         text-decoration: none;
-        font-weight: bold;
+        font-weight: 500;
     }
+    
     .attribution a:hover {
         text-decoration: underline;
     }
+    
+    /* Section Headers */
     .section-header {
-        color: #2E7D32;
-        font-size: 24px;
-        font-weight: bold;
-        margin-top: 30px;
-        border-bottom: 2px solid #2E7D32;
-        padding-bottom: 10px;
+        font-size: 1.8em;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 25px 0 15px 0;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #3498db;
     }
+    
     .subsection-header {
-        color: #1565C0;
-        font-size: 20px;
-        margin-top: 20px;
+        font-size: 1.4em;
+        font-weight: 500;
+        color: #2c3e50;
+        margin: 20px 0 10px 0;
     }
+    
+    /* Info Box Styles */
     .info-box {
-        background-color: #E3F2FD;
+        background-color: #f8f9fa;
         padding: 20px;
         border-radius: 10px;
+        margin: 15px 0;
+        border-left: 4px solid #3498db;
+    }
+    
+    .info-box h3 {
+        font-size: 1.8em;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 15px;
+    }
+    
+    .info-box ol {
         margin: 10px 0;
+        padding-left: 20px;
     }
-    .info-box ul {
-        list-style-type: none;
-        padding-left: 0;
-    }
+    
     .info-box li {
-        margin: 10px 0;
-        padding-left: 25px;
-        position: relative;
+        color: #2c3e50;
+        margin: 8px 0;
+        line-height: 1.5;
     }
-    .info-box li:before {
-        content: "•";
-        position: absolute;
-        left: 0;
-    }
-    .warning-box {
-        background-color: #FFF3E0;
-        padding: 15px;
-        border-radius: 8px;
-        margin: 10px 0;
-    }
+    
+    /* Step Box Styles */
     .step-box {
-        background-color: #F5F5F5;
+        background-color: #f8f9fa;
         padding: 20px;
-        border-left: 4px solid #1E88E5;
-        margin: 10px 0;
+        border-left: 4px solid #3498db;
+        margin: 15px 0;
+        border-radius: 0 10px 10px 0;
     }
+    
     .step-item {
         background-color: white;
         padding: 15px;
-        margin: 15px 0;
+        margin: 12px 0;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
+    
     .step-item p {
         margin: 0;
         padding: 0;
+        color: #2c3e50;
     }
+    
     .step-item strong {
-        color: #1E88E5;
+        color: #3498db;
     }
+    
+    /* Output Section Styles */
     .output-section {
-        margin: 20px 0;
-        padding: 15px;
+        background: #ffffff;
         border-radius: 10px;
-        background-color: #f8f9fa;
+        padding: 25px;
+        margin: 20px 0;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
     .section-title {
-        font-size: 1.5em;
-        font-weight: bold;
-        margin-bottom: 15px;
+        font-size: 1.8em;
+        font-weight: 600;
         color: #2c3e50;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
         border-bottom: 2px solid #3498db;
-        padding-bottom: 5px;
     }
     
-    .output-item {
-        background: white;
-        padding: 15px;
-        margin: 10px 0;
-        border-radius: 8px;
-        border-left: 4px solid #3498db;
-    }
-    
-    .confidence-level {
-        display: inline-block;
-        padding: 4px 8px;
-        border-radius: 4px;
-        margin-bottom: 10px;
-        font-size: 0.9em;
+    .section-subtitle {
+        font-size: 1.4em;
         font-weight: 500;
+        color: #2c3e50;
+        margin: 20px 0 15px 0;
     }
     
-    .high-confidence {
-        background-color: #d4edda;
-        color: #155724;
-    }
-    
-    .medium-confidence {
-        background-color: #fff3cd;
-        color: #856404;
-    }
-    
-    .low-confidence {
-        background-color: #f8d7da;
-        color: #721c24;
-    }
-    
-    .variable-name, .relationship {
-        font-size: 1.1em;
-        font-weight: 500;
-        margin: 10px 0;
+    /* Streamlit Element Overrides */
+    .stMarkdown div {
+        font-size: 1em;
         color: #2c3e50;
     }
     
-    .relationship .arrow {
-        margin: 0 10px;
-        color: #3498db;
+    /* Expander Styling */
+    .streamlit-expanderHeader {
+        font-size: 1.8em !important;
+        font-weight: 600 !important;
+        color: #2c3e50 !important;
+        background-color: transparent !important;
     }
     
-    .explanation-box, .recommendation-box {
-        background: #f8f9fa;
-        padding: 10px;
-        margin: 8px 0;
-        border-radius: 6px;
+    .streamlit-expanderContent {
+        background-color: #f8f9fa !important;
+        border-radius: 0 0 10px 10px !important;
     }
     
-    .critique-point {
-        font-size: 1.1em;
-        font-weight: 500;
-        margin: 10px 0;
-        color: #e74c3c;
+    /* Select Box Styling */
+    .stSelectbox label {
+        font-size: 1.2em !important;
+        font-weight: 500 !important;
+        color: #2c3e50 !important;
     }
     
-    .stButton button {
-        background-color: #3498db;
-        color: white;
-        border: none;
-        padding: 10px 24px;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-    }
-    
-    .stButton button:hover {
-        background-color: #2980b9;
-    }
-    
-    .stTextInput input {
-        border-radius: 5px;
-        border: 1px solid #ddd;
-    }
-    
-    .stTextArea textarea {
-        border-radius: 5px;
-        border: 1px solid #ddd;
+    /* Text Input Styling */
+    .stTextInput label, .stTextArea label {
+        font-size: 1.2em !important;
+        font-weight: 500 !important;
+        color: #2c3e50 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -707,47 +679,48 @@ if not openai_api_key:
     st.error("Please set the OPENAI_API_KEY environment variable.")
 else:
     # Main title and attribution
-    st.markdown('<p class="main-title">PyWhy-LLM Causal Analysis Assistant</p>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-title">PyWhy-LLM Causal Analysis Assistant</h1>', unsafe_allow_html=True)
     st.markdown('<p class="attribution">(Created by <a href="https://www.linkedin.com/in/syedalihasannaqvi/" target="_blank">Syed Hasan</a>)</p>', unsafe_allow_html=True)
     
     # Introduction section
-    st.markdown('<p class="section-header">Welcome to PyWhy-LLM</p>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-header">Welcome to PyWhy-LLM</h2>', unsafe_allow_html=True)
     with st.expander("ℹ️ What is PyWhy-LLM?", expanded=True):
         st.markdown("""
         <div class="info-box">
-        PyWhy-LLM is an innovative tool that combines Large Language Models (LLMs) with causal analysis to help researchers and analysts:
-        
-        - 🔍 Identify potential causal relationships
-        - 🎯 Suggest confounding variables
-        - ✅ Validate causal assumptions
-        - 📊 Build and critique DAGs (Directed Acyclic Graphs)
+        <h3>PyWhy-LLM is an innovative tool that combines Large Language Models (LLMs) with causal analysis to help researchers and analysts:</h3>
+        <ul>
+            <li>🔍 Identify potential causal relationships</li>
+            <li>🎯 Suggest confounding variables</li>
+            <li>✅ Validate causal assumptions</li>
+            <li>📊 Build and critique DAGs (Directed Acyclic Graphs)</li>
+        </ul>
         </div>
         """, unsafe_allow_html=True)
 
     # Quick Start Guide
-    st.markdown('<p class="section-header">Quick Start Guide</p>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-header">Quick Start Guide</h2>', unsafe_allow_html=True)
     with st.expander("📚 How to Use PyWhy-LLM", expanded=True):
         st.markdown("""
         <div class="step-box">
-        <div class="step-item">
-            <p><strong>1. 🎯 Select your analysis step from the sidebar</strong></p>
-            Choose the appropriate analysis type for your causal inference needs
-        </div>
-        
-        <div class="step-item">
-            <p><strong>2. 🔄 Enter your variables and factors in the input fields</strong></p>
-            Provide all relevant variables and relationships for analysis
-        </div>
-        
-        <div class="step-item">
-            <p><strong>3. 📊 Follow the step-by-step process for your chosen analysis</strong></p>
-            Complete each step as guided by the interface
-        </div>
-        
-        <div class="step-item">
-            <p><strong>4. 📋 Review and interpret the results</strong></p>
-            Analyze the output and insights provided by the system
-        </div>
+            <div class="step-item">
+                <p><strong>1. 🎯 Select your analysis step</strong></p>
+                <p>Choose from Model Suggestion, Identification Suggestion, or Validation Suggestion</p>
+            </div>
+            
+            <div class="step-item">
+                <p><strong>2. 🔄 Enter your variables</strong></p>
+                <p>Input your treatment, outcome, and other relevant variables</p>
+            </div>
+            
+            <div class="step-item">
+                <p><strong>3. 📊 Follow the guided process</strong></p>
+                <p>Complete each step as directed by the interface</p>
+            </div>
+            
+            <div class="step-item">
+                <p><strong>4. 📋 Review results</strong></p>
+                <p>Analyze the output and insights provided</p>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -755,7 +728,7 @@ else:
     col1, col2 = st.columns([1, 2])
     
     with col1:
-        st.markdown('<p class="section-header">Analysis Configuration</p>', unsafe_allow_html=True)
+        st.markdown('<h2 class="section-header">Analysis Configuration</h2>', unsafe_allow_html=True)
         
         llm_model = st.selectbox("🤖 Choose LLM Model", ["gpt-4"])
         
