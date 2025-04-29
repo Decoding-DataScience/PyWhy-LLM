@@ -405,149 +405,20 @@ def format_confounder_output(confounders):
     4. Document any unmeasured confounders that might affect your analysis
     """)
 
-def format_relationship_output(relationships):
-    """Format relationships into readable text with explanations."""
-    if not relationships:
-        return st.markdown("_No relationships identified._")
+def format_list_to_text(items):
+    """Convert a list of items into a readable text format."""
+    if not items:
+        return ""
     
-    st.markdown("## Identified Causal Relationships")
+    # Clean up each item and remove quotes and brackets
+    cleaned_items = [str(item).strip("'[]{}").strip() for item in items]
     
-    if isinstance(relationships, (list, tuple)):
-        for rel in relationships:
-            if isinstance(rel, (list, tuple)) and len(rel) >= 2:
-                source = str(rel[0]).replace('_', ' ').title()
-                target = str(rel[1]).replace('_', ' ').title()
-                confidence = 'medium'
-                confidence_score = None
-                
-                if len(rel) >= 3 and isinstance(rel[2], (int, float)):
-                    confidence_score = rel[2]
-                    confidence = 'high' if confidence_score > 0.7 else 'medium' if confidence_score > 0.4 else 'low'
-                
-                confidence_color = "#27ae60" if confidence == "high" else "#f39c12" if confidence == "medium" else "#e74c3c"
-                
-                st.markdown(f"### {source} → {target}")
-                st.markdown(f"""
-                    <div style='color: {confidence_color}; font-weight: bold; margin-bottom: 10px;'>
-                        Confidence Level: {confidence.title()}
-                        {f"<br>Relationship Strength: {confidence_score:.2f}" if confidence_score is not None else ""}
-                    </div>
-                """, unsafe_allow_html=True)
-                
-                st.markdown(f"**Recommendation:** {get_relationship_recommendation(confidence)}")
-    
-    # Add explanation section
-    st.markdown("### 🔍 Understanding These Relationships")
-    st.markdown("""
-    1. Strong relationships suggest direct causal effects
-    2. Medium relationships may indicate indirect effects
-    3. Low confidence relationships need further investigation
-    """)
-    
-    # Add next steps
-    st.markdown("### 📊 Next Steps")
-    st.markdown("""
-    1. Focus on strong relationships for primary analysis
-    2. Consider indirect effects in your model
-    3. Validate relationships with domain experts
-    4. Look for potential mediating variables
-    """)
-
-def get_relationship_recommendation(confidence):
-    """Generate recommendations based on confidence level"""
-    if confidence == 'high':
-        return "Consider this relationship as a primary focus for your causal analysis."
-    elif confidence == 'medium':
-        return "Further investigation may be needed to strengthen evidence for this relationship."
+    if len(cleaned_items) == 1:
+        return cleaned_items[0]
+    elif len(cleaned_items) == 2:
+        return f"{cleaned_items[0]} and {cleaned_items[1]}"
     else:
-        return "Additional data or expert validation recommended before including in analysis."
-
-def get_confidence_level(score):
-    """Convert numerical score to confidence level text"""
-    if score > 0.7:
-        return "High"
-    elif score > 0.4:
-        return "Medium"
-    return "Low"
-
-def format_domain_expertises(expertises):
-    """Format domain expertises into readable text."""
-    if not expertises:
-        return "_No domain expertises found._"
-    
-    if isinstance(expertises, dict):
-        formatted_output = []
-        for domain, expertise in expertises.items():
-            formatted_output.append(f"### {domain}")
-            if isinstance(expertise, list):
-                formatted_output.extend([f"- {item}" for item in expertise])
-            else:
-                formatted_output.append(f"- {expertise}")
-            formatted_output.append("")  # Add blank line between domains
-        return "\n".join(formatted_output)
-    elif isinstance(expertises, list):
-        return "\n".join([f"- {expertise}" for expertise in expertises])
-    else:
-        return str(expertises)
-
-def format_critiques(critiques):
-    """Format critiques into readable text with explanations."""
-    if not critiques:
-        return st.markdown("_No critiques found._")
-    
-    def format_single_critique(critique):
-        return str(critique).replace('_', ' ').title()
-    
-    st.markdown("## Analysis Critiques")
-    
-    if isinstance(critiques, dict):
-        for category, items in critiques.items():
-            st.markdown(f"### {str(category).replace('_', ' ').title()}")
-            
-            if isinstance(items, list):
-                for item in items:
-                    st.markdown(f"#### {format_single_critique(item)}")
-                    st.markdown(f"💡 {generate_critique_explanation(category, item)}")
-            else:
-                st.markdown(f"#### {format_single_critique(items)}")
-                st.markdown(f"💡 {generate_critique_explanation(category, items)}")
-    elif isinstance(critiques, list):
-        for critique in critiques:
-            st.markdown(f"#### {format_single_critique(critique)}")
-            st.markdown(f"💡 {generate_critique_explanation('general', critique)}")
-    
-    # Add explanation section
-    st.markdown("### 🔍 Understanding These Critiques")
-    st.markdown("""
-    1. Each critique points to potential improvements in your causal model
-    2. Address high-priority critiques first to strengthen your analysis
-    3. Consider the practical feasibility of implementing suggested changes
-    """)
-    
-    # Add next steps
-    st.markdown("### 📊 Next Steps")
-    st.markdown("""
-    1. Review each critique and assess its impact on your analysis
-    2. Prioritize changes based on feasibility and importance
-    3. Document any limitations that cannot be addressed
-    4. Update your model iteratively as you address each point
-    """)
-
-def generate_critique_explanation(category, critique):
-    """Generate human-readable explanations for critiques."""
-    category = category.lower()
-    critique = str(critique).lower()
-    
-    if 'missing' in category or 'missing' in critique:
-        return "Consider adding this element to make your causal model more complete."
-    elif 'invalid' in category or 'invalid' in critique:
-        return "This relationship may need to be reconsidered or removed from your model."
-    elif 'suggestion' in category:
-        return "This is a recommended addition to improve your causal model."
-    elif 'warning' in category:
-        return "Pay attention to this aspect as it might affect the validity of your analysis."
-    else:
-        return "Consider this point to improve your causal analysis."
+        return ", ".join(cleaned_items[:-1]) + f", and {cleaned_items[-1]}"
 
 def format_variables(variables):
     """Format the variables output with proper styling"""
@@ -560,23 +431,34 @@ def format_variables(variables):
         
         st.markdown("## Identified Variables")
         
-        if isinstance(variables, list):
+        if isinstance(variables, (dict, list)):
+            # Handle dictionary format
+            if isinstance(variables, dict):
+                variables = [{"name": k, "value": v} for k, v in variables.items()]
+            
             for var in variables:
                 if isinstance(var, dict):
                     # Handle dictionary format
-                    confidence = var.get('confidence', 'medium').lower()
                     name = var.get('name', '')
-                    impact = var.get('impact', '')
-                    recommendation = var.get('recommendation', '')
+                    confidence = var.get('confidence', 'medium').lower()
+                    impact = var.get('impact', [])
+                    recommendation = var.get('recommendation', [])
+                    
+                    # Convert impact and recommendation to readable text
+                    if isinstance(impact, (list, tuple)):
+                        impact = format_list_to_text(impact)
+                    if isinstance(recommendation, (list, tuple)):
+                        recommendation = format_list_to_text(recommendation)
+                    
                 elif isinstance(var, (list, tuple)):
                     # Handle list/tuple format
                     name = str(var[0]) if len(var) > 0 else ''
                     confidence = 'medium'
-                    impact = str(var[1]) if len(var) > 1 else ''
-                    recommendation = str(var[2]) if len(var) > 2 else ''
+                    impact = format_list_to_text(var[1]) if len(var) > 1 else ''
+                    recommendation = format_list_to_text(var[2]) if len(var) > 2 else ''
                 else:
                     # Handle single string/value
-                    name = str(var)
+                    name = str(var).strip("'[]{}").strip()
                     confidence = 'medium'
                     impact = ''
                     recommendation = ''
@@ -591,9 +473,9 @@ def format_variables(variables):
                 """, unsafe_allow_html=True)
                 
                 if impact:
-                    st.markdown(f"**Impact:** {impact}")
+                    st.markdown(f"**Key Impacts:** {impact}")
                 if recommendation:
-                    st.markdown(f"**Recommendation:** {recommendation}")
+                    st.markdown(f"**Recommendations:** Consider {recommendation} in your analysis")
         
         # Add explanation section
         st.markdown("### 🔍 Understanding Variable Impacts")
@@ -604,10 +486,9 @@ def format_variables(variables):
         """)
         
     except Exception as e:
-        st.error(f"""
+        st.error("""
             Unable to format variables. Please ensure the input is in the correct format.
-            Expected format: List of dictionaries with 'name', 'confidence', 'impact', and 'recommendation' fields,
-            or list of lists/tuples with [name, impact, recommendation] format.
+            The variables should be provided as a list of factors with their impacts and recommendations.
         """)
         return None
 
@@ -709,6 +590,147 @@ def validate_dag_input(dag_str):
             return True, formatted_dict, "✅ Valid DAG structure"
         except:
             return False, {}, "❌ Invalid input format. Please use valid JSON or Python dictionary format."
+
+def format_relationship_output(relationships):
+    """Format relationships into readable text with explanations."""
+    if not relationships:
+        return st.markdown("_No relationships identified._")
+    
+    st.markdown("## Identified Causal Relationships")
+    
+    if isinstance(relationships, (list, tuple)):
+        for rel in relationships:
+            if isinstance(rel, (list, tuple)) and len(rel) >= 2:
+                source = str(rel[0]).strip("'[]{}").strip()
+                target = str(rel[1]).strip("'[]{}").strip()
+                confidence = 'medium'
+                confidence_score = None
+                
+                if len(rel) >= 3 and isinstance(rel[2], (int, float)):
+                    confidence_score = rel[2]
+                    confidence = 'high' if confidence_score > 0.7 else 'medium' if confidence_score > 0.4 else 'low'
+                
+                confidence_color = "#27ae60" if confidence == "high" else "#f39c12" if confidence == "medium" else "#e74c3c"
+                
+                st.markdown(f"### {source} affects {target}")
+                st.markdown(f"""
+                    <div style='color: {confidence_color}; font-weight: bold; margin-bottom: 10px;'>
+                        Confidence Level: {confidence.title()}
+                        {f"<br>Relationship Strength: {confidence_score:.2f}" if confidence_score is not None else ""}
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                st.markdown(f"**Recommendation:** {get_relationship_recommendation(confidence)}")
+    
+    # Add explanation section
+    st.markdown("### 🔍 Understanding These Relationships")
+    st.markdown("""
+    1. Strong relationships suggest direct causal effects
+    2. Medium relationships may indicate indirect effects
+    3. Low confidence relationships need further investigation
+    """)
+    
+    # Add next steps
+    st.markdown("### 📊 Next Steps")
+    st.markdown("""
+    1. Focus on strong relationships for primary analysis
+    2. Consider indirect effects in your model
+    3. Validate relationships with domain experts
+    4. Look for potential mediating variables
+    """)
+
+def get_relationship_recommendation(confidence):
+    """Generate recommendations based on confidence level"""
+    if confidence == 'high':
+        return "Consider this relationship as a primary focus for your causal analysis."
+    elif confidence == 'medium':
+        return "Further investigation may be needed to strengthen evidence for this relationship."
+    else:
+        return "Additional data or expert validation recommended before including in analysis."
+
+def format_domain_expertises(expertises):
+    """Format domain expertises into readable text."""
+    if not expertises:
+        return "_No domain expertises found._"
+    
+    if isinstance(expertises, dict):
+        formatted_output = []
+        for domain, expertise in expertises.items():
+            formatted_output.append(f"### {domain}")
+            if isinstance(expertise, list):
+                formatted_output.extend([f"- {item}" for item in expertise])
+            else:
+                formatted_output.append(f"- {expertise}")
+            formatted_output.append("")  # Add blank line between domains
+        return "\n".join(formatted_output)
+    elif isinstance(expertises, list):
+        return "\n".join([f"- {expertise}" for expertise in expertises])
+    else:
+        return str(expertises)
+
+def format_critiques(critiques):
+    """Format critiques into readable text with explanations."""
+    if not critiques:
+        return st.markdown("_No critiques found._")
+    
+    def format_single_critique(critique):
+        """Format a single critique into readable text."""
+        return str(critique).strip("'[]{}").strip().replace('_', ' ').title()
+    
+    st.markdown("## Analysis Critiques")
+    
+    if isinstance(critiques, dict):
+        for category, items in critiques.items():
+            category = str(category).strip("'[]{}").strip().replace('_', ' ').title()
+            st.markdown(f"### {category}")
+            
+            if isinstance(items, list):
+                for item in items:
+                    critique_text = format_single_critique(item)
+                    st.markdown(f"#### {critique_text}")
+                    st.markdown(f"💡 {generate_critique_explanation(category, critique_text)}")
+            else:
+                critique_text = format_single_critique(items)
+                st.markdown(f"#### {critique_text}")
+                st.markdown(f"💡 {generate_critique_explanation(category, critique_text)}")
+    elif isinstance(critiques, list):
+        for critique in critiques:
+            critique_text = format_single_critique(critique)
+            st.markdown(f"#### {critique_text}")
+            st.markdown(f"💡 {generate_critique_explanation('general', critique_text)}")
+    
+    # Add explanation section
+    st.markdown("### 🔍 Understanding These Critiques")
+    st.markdown("""
+    1. Each critique points to potential improvements in your causal model
+    2. Address high-priority critiques first to strengthen your analysis
+    3. Consider the practical feasibility of implementing suggested changes
+    """)
+    
+    # Add next steps
+    st.markdown("### 📊 Next Steps")
+    st.markdown("""
+    1. Review each critique and assess its impact on your analysis
+    2. Prioritize changes based on feasibility and importance
+    3. Document any limitations that cannot be addressed
+    4. Update your model iteratively as you address each point
+    """)
+
+def generate_critique_explanation(category, critique):
+    """Generate human-readable explanations for critiques."""
+    category = category.lower()
+    critique = str(critique).lower()
+    
+    if 'missing' in category or 'missing' in critique:
+        return "Consider adding this element to make your causal model more complete."
+    elif 'invalid' in category or 'invalid' in critique:
+        return "This relationship may need to be reconsidered or removed from your model."
+    elif 'suggestion' in category:
+        return "This is a recommended addition to improve your causal model."
+    elif 'warning' in category:
+        return "Pay attention to this aspect as it might affect the validity of your analysis."
+    else:
+        return "Consider this point to improve your causal analysis."
 
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
