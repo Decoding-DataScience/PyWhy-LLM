@@ -1295,18 +1295,23 @@ For example, in an education study:
 - It likely only affects job prospects through its effect on school quality
 - It's typically not related to other factors affecting job success
 
-Format your response as a list of IVs with explanations and validity scores:
+Format your response EXACTLY as a JSON array of arrays, where each inner array contains:
+1. The name of the instrumental variable (string)
+2. A brief explanation of why it's a good IV (string)
+3. A validity score between 0 and 1 (number)
+
+Example format:
 [
     ["distance_to_schools", "affects school choice but not directly related to job outcomes", 0.85],
     ["local_education_policy", "influences school quality but not directly linked to employment", 0.75]
 ]
 
-Your response:"""
+Ensure your response is a valid JSON array and includes ONLY the array, no additional text."""
 
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "You are a causal inference expert helping to identify instrumental variables."},
+                {"role": "system", "content": "You are a causal inference expert. Return ONLY the requested JSON array format, no additional text."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
@@ -1315,24 +1320,67 @@ Your response:"""
         
         try:
             suggestion = response.choices[0].message.content.strip()
-            suggestion = suggestion.replace("'", '"')
             
+            # Clean up the response
+            suggestion = suggestion.replace("'", '"')  # Replace single quotes with double quotes
+            suggestion = suggestion.replace("\n", " ")  # Remove newlines
+            
+            # Extract just the array part if there's additional text
             import re
-            list_pattern = r'\[([\s\S]*)\]'
-            match = re.search(list_pattern, suggestion)
+            array_pattern = r'\[(.*)\]'
+            match = re.search(array_pattern, suggestion)
             if match:
                 suggestion = f"[{match.group(1)}]"
             
             try:
+                # Try parsing as JSON first
                 ivs = json.loads(suggestion)
+                
+                # Validate the structure
+                if not isinstance(ivs, list):
+                    st.warning("Invalid response format. Expected a list of instrumental variables.")
+                    return None
+                
+                for iv in ivs:
+                    if not isinstance(iv, list) or len(iv) < 3:
+                        st.warning("Invalid IV format. Each IV should have a name, explanation, and score.")
+                        return None
+                    
+                    # Ensure score is a float between 0 and 1
+                    iv[2] = float(iv[2])
+                    if not 0 <= iv[2] <= 1:
+                        iv[2] = max(0, min(1, iv[2]))  # Clamp between 0 and 1
+                
+                return ivs
+                
             except json.JSONDecodeError:
+                # If JSON fails, try Python literal evaluation
                 import ast
-                ivs = ast.literal_eval(suggestion)
-            
-            return ivs if ivs else None
+                try:
+                    ivs = ast.literal_eval(suggestion)
+                    
+                    # Apply the same validation as above
+                    if not isinstance(ivs, list):
+                        st.warning("Invalid response format. Expected a list of instrumental variables.")
+                        return None
+                    
+                    for iv in ivs:
+                        if not isinstance(iv, list) or len(iv) < 3:
+                            st.warning("Invalid IV format. Each IV should have a name, explanation, and score.")
+                            return None
+                        
+                        # Ensure score is a float between 0 and 1
+                        iv[2] = float(iv[2])
+                        if not 0 <= iv[2] <= 1:
+                            iv[2] = max(0, min(1, iv[2]))  # Clamp between 0 and 1
+                    
+                    return ivs
+                except:
+                    st.warning("Could not parse the IV suggestions. Please try again.")
+                    return None
             
         except Exception as e:
-            st.error(f"Error parsing IV suggestion: {str(e)}")
+            st.error(f"Error processing IV suggestions: {str(e)}")
             return None
             
     except Exception as e:
