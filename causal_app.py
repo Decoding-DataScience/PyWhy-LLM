@@ -873,26 +873,39 @@ def suggest_relationships_from_factors(treatment, outcome, factors, openai_api_k
     try:
         client = OpenAI(api_key=openai_api_key)
         
-        prompt = f"""Given:
-- Treatment variable: {treatment}
-- Outcome variable: {outcome}
-- All factors: {', '.join(factors)}
+        # Create a more structured prompt
+        prompt = f"""Given these variables in a causal analysis context:
+- Treatment: {treatment}
+- Outcome: {outcome}
+- Other factors: {', '.join(f for f in factors if f not in [treatment, outcome])}
 
 Please identify potential causal relationships between these variables.
-Consider direct and indirect effects, and provide confidence levels.
+Focus on direct relationships and provide confidence scores.
 
-Format your response as a list of tuples with source, target, and confidence (0-1) like this:
+Format your response EXACTLY as a list of lists, where each inner list contains:
+1. Source variable (string)
+2. Target variable (string)
+3. Confidence score (number between 0 and 1)
+
+Example format:
 [
-    ["var1", "var2", 0.8],
-    ["var2", "var3", 0.6]
+    ["{treatment}", "{outcome}", 0.8],
+    ["factor1", "{outcome}", 0.6],
+    ["{treatment}", "factor2", 0.7]
 ]
+
+Ensure:
+1. Each relationship is a direct causal link
+2. Confidence scores reflect the strength of evidence (0-1)
+3. Include relationships involving treatment and outcome
+4. Only include relationships with reasonable causal basis
 
 Your response:"""
 
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "You are a causal inference expert helping to identify relationships between variables."},
+                {"role": "system", "content": "You are a causal inference expert. Provide relationships in the exact format requested."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
@@ -902,8 +915,20 @@ Your response:"""
         # Parse the response
         try:
             suggestion = response.choices[0].message.content.strip()
-            # Try parsing as JSON first
+            
+            # Clean up the response to handle common formatting issues
+            suggestion = suggestion.replace("'", '"')  # Replace single quotes with double quotes
+            suggestion = suggestion.replace("None", "null")  # Replace Python None with JSON null
+            
+            # Extract the list part from the response if there's additional text
+            import re
+            list_pattern = r'\[([\s\S]*)\]'  # Match everything between first [ and last ]
+            match = re.search(list_pattern, suggestion)
+            if match:
+                suggestion = f"[{match.group(1)}]"
+            
             try:
+                # Try parsing as JSON first
                 relationships = json.loads(suggestion)
             except json.JSONDecodeError:
                 # If JSON parsing fails, try evaluating as Python literal
@@ -915,14 +940,22 @@ Your response:"""
             if isinstance(relationships, list):
                 for rel in relationships:
                     if isinstance(rel, (list, tuple)) and len(rel) >= 2:
-                        # If confidence is not provided, default to 0.5
-                        confidence = rel[2] if len(rel) > 2 else 0.5
-                        formatted_relationships.append([str(rel[0]), str(rel[1]), float(confidence)])
+                        # Ensure proper string formatting and numerical confidence
+                        source = str(rel[0]).strip()
+                        target = str(rel[1]).strip()
+                        confidence = float(rel[2]) if len(rel) > 2 and rel[2] is not None else 0.5
+                        confidence = max(0.0, min(1.0, confidence))  # Clamp between 0 and 1
+                        formatted_relationships.append([source, target, confidence])
             
-            return formatted_relationships if formatted_relationships else None
-            
+            if formatted_relationships:
+                return formatted_relationships
+            else:
+                st.warning("No valid relationships could be extracted from the model's response.")
+                return None
+                
         except Exception as e:
             st.error(f"Error parsing relationships: {str(e)}")
+            st.info("The model's response could not be properly parsed. Please try again.")
             return None
             
     except Exception as e:
@@ -968,6 +1001,18 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
+    # Initialize session state variables if they don't exist
+    if 'suggested_treatment' not in st.session_state:
+        st.session_state.suggested_treatment = ""
+    if 'suggested_outcome' not in st.session_state:
+        st.session_state.suggested_outcome = ""
+    if 'factors_input' not in st.session_state:
+        st.session_state.factors_input = ""
+    if 'treatment_input' not in st.session_state:
+        st.session_state.treatment_input = ""
+    if 'outcome_input' not in st.session_state:
+        st.session_state.outcome_input = ""
+
     # Main Analysis Interface
     col1, col2 = st.columns([1, 2])
     
@@ -991,17 +1036,17 @@ else:
         • Environmental: "co2 emissions, temperature, deforestation, rainfall"
         """
         
-        default_factors = "smoking, lung cancer, exercise habits, air pollution exposure"
-        if 'suggested_treatment' not in st.session_state:
-            st.session_state.suggested_treatment = None
-        if 'suggested_outcome' not in st.session_state:
-            st.session_state.suggested_outcome = None
         all_factors_str = st.text_area(
             "📝 Enter all relevant factors (comma-separated):", 
-            value=default_factors,
+            value=st.session_state.factors_input,
             help=factors_help,
-            key="factors_input"
+            key="factors_area"
         )
+        
+        # Update session state for factors
+        if all_factors_str != st.session_state.factors_input:
+            st.session_state.factors_input = all_factors_str
+        
         all_factors = [factor.strip() for factor in all_factors_str.split(',') if factor.strip()]
 
         # Add a button to suggest variables
@@ -1016,26 +1061,39 @@ else:
                             if suggested_treatment and suggested_outcome:
                                 st.session_state.suggested_treatment = suggested_treatment
                                 st.session_state.suggested_outcome = suggested_outcome
-                                st.success("Variables suggested based on your factors!")
+                                st.session_state.treatment_input = suggested_treatment
+                                st.session_state.outcome_input = suggested_outcome
+                                st.success(f"Variables suggested! Treatment: {suggested_treatment}, Outcome: {suggested_outcome}")
+                            else:
+                                st.warning("Could not generate suggestions. Please check your input factors.")
                         except Exception as e:
                             st.error(f"Error during suggestion: {str(e)}")
             else:
                 st.warning("Please enter some factors first.")
 
-        # Update the treatment and outcome input fields to show suggestions
+        # Treatment input with session state
         treatment = st.text_input(
             "🎯 Enter the treatment variable:",
-            value=st.session_state.suggested_treatment if st.session_state.suggested_treatment else "smoking",
-            help="The variable whose effect you want to study. " + 
-                 (f"Suggested treatment: {st.session_state.suggested_treatment}" if st.session_state.suggested_treatment else "")
+            value=st.session_state.treatment_input,
+            help="The variable whose effect you want to study.",
+            key="treatment_field"
         )
+        
+        # Update session state for treatment
+        if treatment != st.session_state.treatment_input:
+            st.session_state.treatment_input = treatment
 
+        # Outcome input with session state
         outcome = st.text_input(
             "🎯 Enter the outcome variable:",
-            value=st.session_state.suggested_outcome if st.session_state.suggested_outcome else "lung cancer",
-            help="The variable you want to measure the effect on. " + 
-                 (f"Suggested outcome: {st.session_state.suggested_outcome}" if st.session_state.suggested_outcome else "")
+            value=st.session_state.outcome_input,
+            help="The variable you want to measure the effect on.",
+            key="outcome_field"
         )
+        
+        # Update session state for outcome
+        if outcome != st.session_state.outcome_input:
+            st.session_state.outcome_input = outcome
 
     with col2:
         st.markdown('<h2 class="section-header">Analysis Steps</h2>', unsafe_allow_html=True)
