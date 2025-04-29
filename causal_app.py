@@ -68,45 +68,105 @@ def convert_tuples_to_lists(obj):
     else:
         return obj
 
-def format_relationship_output(relationships):
-    """Format relationships into readable text with explanations."""
-    if not relationships:
-        return "_No relationships found._"
+def format_confounder_output(confounders):
+    """Format confounders into human-readable text with explanations."""
+    if not confounders:
+        return "_No confounding variables identified._"
     
-    def format_single_item(item):
-        return str(item).replace('_', ' ').title()
+    def format_relationship(source, target, score=None):
+        """Format a single relationship in human-readable text."""
+        source = str(source).replace('_', ' ').title()
+        target = str(target).replace('_', ' ').title()
+        if score:
+            return f"• A relationship exists between {source} and {target}\n  Strength of relationship: {score:.2f}"
+        return f"• A relationship exists between {source} and {target}"
     
     formatted_output = []
+    formatted_output.append("### Identified Confounding Variables")
+    formatted_output.append("")
+    
+    if isinstance(confounders, (list, tuple)):
+        for item in confounders:
+            if isinstance(item, (list, tuple)):
+                if len(item) >= 2:
+                    # Handle relationship tuples
+                    if len(item) == 3 and isinstance(item[2], (int, float)):
+                        rel = format_relationship(item[0], item[1], item[2])
+                    else:
+                        rel = format_relationship(item[0], item[1])
+                    formatted_output.append(rel)
+                    formatted_output.append(f"  💡 This suggests that {str(item[0]).replace('_', ' ').lower()} might influence both your treatment and outcome.")
+                    formatted_output.append("")
+            else:
+                # Handle single variables
+                var_name = str(item).replace('_', ' ').title()
+                formatted_output.append(f"• {var_name}")
+                formatted_output.append(f"  💡 This variable may affect both your treatment and outcome variables.")
+                formatted_output.append("")
+    
+    # Add general explanation
+    formatted_output.append("🔍 Understanding the Results:")
+    formatted_output.append("These confounding variables are important factors that might affect both your treatment and outcome.")
+    formatted_output.append("Consider controlling for these variables in your analysis to get more accurate results.")
+    formatted_output.append("")
+    formatted_output.append("📊 Recommendations:")
+    formatted_output.append("1. Include these variables in your data collection")
+    formatted_output.append("2. Use statistical methods to control for their effects")
+    formatted_output.append("3. Consider how these variables might influence your conclusions")
+    
+    return "\n".join(formatted_output)
+
+def format_relationship_output(relationships):
+    """Format relationships into human-readable text with explanations."""
+    if not relationships:
+        return "_No relationships identified._"
+    
+    formatted_output = []
+    formatted_output.append("### Identified Causal Relationships")
+    formatted_output.append("")
+    
     for rel in relationships:
         if isinstance(rel, (list, tuple)) and len(rel) >= 2:
+            source = str(rel[0]).replace('_', ' ').title()
+            target = str(rel[1]).replace('_', ' ').title()
+            
             if len(rel) == 3 and isinstance(rel[2], (int, float)):
                 formatted_output.extend([
-                    f"• {format_single_item(rel[0])} affects {format_single_item(rel[1])}",
-                    f"  Confidence Score: {rel[2]:.2f}",
-                    f"  💡 This relationship suggests that changes in {format_single_item(rel[0]).lower()} may lead to changes in {format_single_item(rel[1]).lower()}.",
-                    ""  # Add blank line
+                    f"• {source} has an effect on {target}",
+                    f"  Confidence Level: {'High' if rel[2] > 0.7 else 'Medium' if rel[2] > 0.4 else 'Low'}",
+                    f"  💡 Analysis suggests that changes in {source.lower()} may lead to changes in {target.lower()}.",
+                    ""
                 ])
             else:
                 formatted_output.extend([
-                    f"• {format_single_item(rel[0])} affects {format_single_item(rel[1])}",
-                    f"  💡 This indicates a potential causal link from {format_single_item(rel[0]).lower()} to {format_single_item(rel[1]).lower()}.",
-                    ""  # Add blank line
+                    f"• {source} may influence {target}",
+                    f"  💡 There appears to be a relationship where {source.lower()} affects {target.lower()}.",
+                    ""
                 ])
         elif isinstance(rel, dict):
             for source, targets in rel.items():
+                source = str(source).replace('_', ' ').title()
                 if isinstance(targets, (list, tuple)):
                     for target in targets:
+                        target = str(target).replace('_', ' ').title()
                         formatted_output.extend([
-                            f"• {format_single_item(source)} influences {format_single_item(target)}",
-                            f"  💡 This suggests that {format_single_item(source).lower()} may have an effect on {format_single_item(target).lower()}.",
-                            ""  # Add blank line
+                            f"• {source} is connected to {target}",
+                            f"  💡 The analysis indicates that {source.lower()} might have an impact on {target.lower()}.",
+                            ""
                         ])
-                else:
-                    formatted_output.extend([
-                        f"• {format_single_item(source)} influences {format_single_item(targets)}",
-                        f"  💡 This indicates a potential relationship where {format_single_item(source).lower()} affects {format_single_item(targets).lower()}.",
-                        ""  # Add blank line
-                    ])
+    
+    # Add explanation section
+    formatted_output.extend([
+        "🔍 Understanding These Relationships:",
+        "• Strong relationships suggest direct causal effects",
+        "• Medium relationships may indicate indirect effects",
+        "• Low confidence relationships need further investigation",
+        "",
+        "📊 What This Means for Your Analysis:",
+        "• Consider these relationships when designing interventions",
+        "• Account for indirect effects in your analysis",
+        "• Focus on stronger relationships for primary conclusions"
+    ])
     
     return "\n".join(formatted_output)
 
@@ -189,77 +249,59 @@ def generate_critique_explanation(category, critique):
         return "Consider this point to improve your causal analysis."
 
 def format_variables(variables):
-    """Format variables into readable text with explanations."""
+    """Format variables into human-readable text with explanations."""
     if not variables:
         return "_No variables identified._"
     
-    def format_single_var(var):
-        """Helper function to format a single variable."""
-        if isinstance(var, (list, tuple)):
-            return [str(v).replace('_', ' ').title() for v in var]
-        return str(var).replace('_', ' ').title()
+    formatted_output = []
+    formatted_output.append("### Key Variables in Your Analysis")
+    formatted_output.append("")
     
-    if isinstance(variables, list):
-        formatted_vars = []
+    if isinstance(variables, (list, tuple)):
         for var in variables:
-            if isinstance(var, (list, tuple)):
-                if len(var) == 3 and isinstance(var[2], (int, float)):
-                    formatted_vars.append({
-                        "relationship": f"• {format_single_var(var[0])} affects {format_single_var(var[1])}",
-                        "confidence": f"  Confidence Score: {var[2]:.2f}",
-                        "explanation": f"  💡 This indicates a potential causal relationship where {format_single_var(var[0]).lower()} may influence {format_single_var(var[1]).lower()}."
-                    })
-                elif len(var) == 2:
-                    formatted_vars.append({
-                        "relationship": f"• {format_single_var(var[0])} affects {format_single_var(var[1])}",
-                        "explanation": f"  💡 This suggests a direct relationship between {format_single_var(var[0]).lower()} and {format_single_var(var[1]).lower()}."
-                    })
-                else:
-                    formatted_vars.append({
-                        "relationship": f"• {', '.join(map(format_single_var, var))}",
-                        "explanation": "  💡 These variables are related in the causal model."
-                    })
-            else:
-                formatted_vars.append({
-                    "variable": f"• {format_single_var(var)}",
-                    "explanation": f"  💡 This is a key variable in your causal analysis."
-                })
-        
-        # Format the output with each item on a new line
-        output = []
-        for item in formatted_vars:
-            if "relationship" in item:
-                output.append(item["relationship"])
-                if "confidence" in item:
-                    output.append(item["confidence"])
-                output.append(item["explanation"])
-            else:
-                output.append(item["variable"])
-                output.append(item["explanation"])
-            output.append("")  # Add blank line between items
-        
-        return "\n".join(output)
-    
+            name = str(var).replace('_', ' ').title()
+            formatted_output.extend([
+                f"• {name}",
+                f"  💡 This is an important factor to consider in your analysis.",
+                ""
+            ])
     elif isinstance(variables, dict):
-        formatted_output = []
         for category, vars in variables.items():
-            formatted_output.append(f"### {str(category).replace('_', ' ').title()}")
-            formatted_output.append("")  # Add spacing after category header
+            category_name = str(category).replace('_', ' ').title()
+            formatted_output.append(f"Category: {category_name}")
+            formatted_output.append("")
             
             if isinstance(vars, (list, tuple)):
                 for var in vars:
-                    formatted_output.append(f"• {format_single_var(var)}")
-                    formatted_output.append(f"  💡 This is a relevant factor in the {category.lower()} category.")
-                    formatted_output.append("")  # Add spacing between items
+                    name = str(var).replace('_', ' ').title()
+                    formatted_output.extend([
+                        f"• {name}",
+                        f"  💡 This variable is relevant in the {category_name.lower()} context.",
+                        ""
+                    ])
             else:
-                formatted_output.append(f"• {format_single_var(vars)}")
-                formatted_output.append(f"  💡 This is a key factor in the {category.lower()} category.")
-                formatted_output.append("")
-            
-            formatted_output.append("")  # Add extra spacing between categories
-        return "\n".join(formatted_output)
-    else:
-        return f"• {format_single_var(variables)}\n  💡 This is an important factor in your analysis."
+                name = str(vars).replace('_', ' ').title()
+                formatted_output.extend([
+                    f"• {name}",
+                    f"  💡 This is a key factor in the {category_name.lower()} category.",
+                    ""
+                ])
+            formatted_output.append("")
+    
+    # Add explanation section
+    formatted_output.extend([
+        "🔍 Understanding Your Variables:",
+        "• Each variable plays a specific role in your causal model",
+        "• Consider how variables interact with each other",
+        "• Think about how to measure each variable accurately",
+        "",
+        "📊 Next Steps:",
+        "• Ensure you have data for all identified variables",
+        "• Consider potential measurement challenges",
+        "• Plan how to handle missing data"
+    ])
+    
+    return "\n".join(formatted_output)
 
 def validate_dag_input(dag_str):
     """Validate DAG input and return tuple of (is_valid, dag_dict, error_message)."""
@@ -426,18 +468,11 @@ else:
             if st.button("Suggest Potential Confounders"):
                 if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
                     suggested_confounders = modeler.suggest_confounders(treatment, outcome, all_factors, st.session_state.domain_expertises)
-                    st.subheader("Suggested Potential Confounders:")
-                    # Improved formatting for confounders
-                    if isinstance(suggested_confounders, list):
-                        formatted_confounders = "\n".join([f"• {conf.replace('_', ' ').title()}" for conf in suggested_confounders])
-                    else:
-                        formatted_confounders = format_variables(convert_tuples_to_lists(suggested_confounders))
+                    st.subheader("Potential Confounding Variables")
+                    formatted_confounders = format_confounder_output(convert_tuples_to_lists(suggested_confounders))
                     st.markdown(formatted_confounders)
-                    
-                    # Add explanation box
-                    st.info("💡 These confounding variables might affect both your treatment and outcome variables. Consider controlling for them in your analysis.")
                 else:
-                    st.warning("Please ensure treatment, outcome, factors, and domain expertises are provided.")
+                    st.warning("Please ensure all required information is provided.")
 
             if st.button("Suggest Pair-wise Relationships (DAG)"):
                 if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
