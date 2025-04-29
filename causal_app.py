@@ -9,9 +9,9 @@ from dotenv import load_dotenv
 
 # Set page config
 st.set_page_config(
-    page_title="PyWhy-LLM Causal Analysis Assistant",
-    page_icon="🔍",
-    layout="wide"
+    page_title="Causal Analysis App",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 # Custom CSS for styling
@@ -102,8 +102,249 @@ st.markdown("""
     .step-item strong {
         color: #1E88E5;
     }
+    .output-section {
+        margin: 20px 0;
+        padding: 15px;
+        border-radius: 10px;
+        background-color: #f8f9fa;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .section-title {
+        font-size: 1.5em;
+        font-weight: bold;
+        margin-bottom: 15px;
+        color: #2c3e50;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 5px;
+    }
+    
+    .output-item {
+        background: white;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 8px;
+        border-left: 4px solid #3498db;
+    }
+    
+    .confidence-level {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        font-size: 0.9em;
+        font-weight: 500;
+    }
+    
+    .high-confidence {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .medium-confidence {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .low-confidence {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .variable-name, .relationship {
+        font-size: 1.1em;
+        font-weight: 500;
+        margin: 10px 0;
+        color: #2c3e50;
+    }
+    
+    .relationship .arrow {
+        margin: 0 10px;
+        color: #3498db;
+    }
+    
+    .explanation-box, .recommendation-box {
+        background: #f8f9fa;
+        padding: 10px;
+        margin: 8px 0;
+        border-radius: 6px;
+    }
+    
+    .critique-point {
+        font-size: 1.1em;
+        font-weight: 500;
+        margin: 10px 0;
+        color: #e74c3c;
+    }
+    
+    .stButton button {
+        background-color: #3498db;
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+    
+    .stButton button:hover {
+        background-color: #2980b9;
+    }
+    
+    .stTextInput input {
+        border-radius: 5px;
+        border: 1px solid #ddd;
+    }
+    
+    .stTextArea textarea {
+        border-radius: 5px;
+        border: 1px solid #ddd;
+    }
     </style>
 """, unsafe_allow_html=True)
+
+def apply_custom_css():
+    st.markdown("""
+        <style>
+        /* General Styles */
+        .output-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .output-item {
+            background: white;
+            border-left: 4px solid #1f77b4;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 5px 5px 0;
+        }
+        
+        .output-item h4 {
+            color: #2c3e50;
+            margin: 0 0 10px 0;
+            font-size: 1.1em;
+        }
+        
+        .output-item p {
+            margin: 5px 0;
+            color: #34495e;
+        }
+        
+        /* Confidence Level Styles */
+        .confidence-high {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        
+        .confidence-medium {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        
+        .confidence-low {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        
+        /* Relationship Arrow */
+        .relationship-arrow {
+            color: #3498db;
+            font-weight: normal;
+            margin: 0 10px;
+        }
+        
+        /* Explanation and Recommendation Boxes */
+        .explanation-box, .recommendation-box {
+            background: white;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .explanation-box {
+            border-left: 4px solid #3498db;
+        }
+        
+        .recommendation-box {
+            border-left: 4px solid #2ecc71;
+        }
+        
+        .explanation-box h4, .recommendation-box h4 {
+            color: #2c3e50;
+            margin: 0 0 10px 0;
+            font-size: 1.1em;
+        }
+        
+        .explanation-box ul, .recommendation-box ol {
+            margin: 10px 0;
+            padding-left: 25px;
+        }
+        
+        .explanation-box li, .recommendation-box li {
+            margin: 5px 0;
+            color: #34495e;
+        }
+        
+        /* Button Styles */
+        .stButton > button {
+            width: 100%;
+            border-radius: 5px;
+            background-color: #2c3e50;
+            color: white;
+            font-weight: 500;
+            border: none;
+            padding: 10px 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .stButton > button:hover {
+            background-color: #34495e;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        /* Input Field Styles */
+        .stTextInput > div > div > input {
+            border-radius: 5px;
+            border: 1px solid #bdc3c7;
+            padding: 8px 12px;
+        }
+        
+        .stTextInput > div > div > input:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52,152,219,0.2);
+        }
+        
+        /* Title and Header Styles */
+        h1 {
+            color: #2c3e50;
+            font-size: 2.5em;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #3498db;
+        }
+        
+        h2 {
+            color: #34495e;
+            font-size: 1.8em;
+            font-weight: 600;
+            margin: 25px 0 15px 0;
+        }
+        
+        h3 {
+            color: #2c3e50;
+            font-size: 1.4em;
+            font-weight: 500;
+            margin: 20px 0 10px 0;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
 def convert_tuples_to_lists(obj):
     if isinstance(obj, tuple):
@@ -120,13 +361,26 @@ def format_confounder_output(confounders):
     if not confounders:
         return "_No confounding variables identified._"
     
+    def format_variable_name(name):
+        """Format variable names consistently."""
+        return str(name).replace('_', ' ').strip().title()
+    
     def format_relationship(source, target, score=None):
         """Format a single relationship in human-readable text."""
-        source = str(source).replace('_', ' ').title()
-        target = str(target).replace('_', ' ').title()
+        source = format_variable_name(source)
+        target = format_variable_name(target)
+        
+        formatted_output = [f"#### {source} ↔ {target}"]
         if score:
-            return f"• A relationship exists between {source} and {target}\n  Strength of relationship: {score:.2f}"
-        return f"• A relationship exists between {source} and {target}"
+            confidence = "High" if score > 0.7 else "Medium" if score > 0.4 else "Low"
+            formatted_output.extend([
+                f"• Relationship Strength: {score:.2f}",
+                f"• Confidence Level: {confidence}",
+                f"💡 {source} shows a {confidence.lower()} likelihood of being a confounder.",
+            ])
+        else:
+            formatted_output.append(f"💡 {source} may act as a confounder through its relationship with {target}.")
+        return formatted_output
     
     formatted_output = []
     formatted_output.append("### Identified Confounding Variables")
@@ -138,81 +392,101 @@ def format_confounder_output(confounders):
                 if len(item) >= 2:
                     # Handle relationship tuples
                     if len(item) == 3 and isinstance(item[2], (int, float)):
-                        rel = format_relationship(item[0], item[1], item[2])
+                        formatted_output.extend(format_relationship(item[0], item[1], item[2]))
                     else:
-                        rel = format_relationship(item[0], item[1])
-                    formatted_output.append(rel)
-                    formatted_output.append(f"  💡 This suggests that {str(item[0]).replace('_', ' ').lower()} might influence both your treatment and outcome.")
+                        formatted_output.extend(format_relationship(item[0], item[1]))
                     formatted_output.append("")
             else:
                 # Handle single variables
-                var_name = str(item).replace('_', ' ').title()
-                formatted_output.append(f"• {var_name}")
-                formatted_output.append(f"  💡 This variable may affect both your treatment and outcome variables.")
-                formatted_output.append("")
+                var_name = format_variable_name(item)
+                formatted_output.extend([
+                    f"#### {var_name}",
+                    "💡 This variable may confound the relationship between treatment and outcome.",
+                    ""
+                ])
     
-    # Add general explanation
-    formatted_output.append("🔍 Understanding the Results:")
-    formatted_output.append("These confounding variables are important factors that might affect both your treatment and outcome.")
-    formatted_output.append("Consider controlling for these variables in your analysis to get more accurate results.")
-    formatted_output.append("")
-    formatted_output.append("📊 Recommendations:")
-    formatted_output.append("1. Include these variables in your data collection")
-    formatted_output.append("2. Use statistical methods to control for their effects")
-    formatted_output.append("3. Consider how these variables might influence your conclusions")
+    # Add detailed explanation section
+    formatted_output.extend([
+        "#### 🔍 Understanding Confounding Variables",
+        "",
+        "• Confounders can create spurious associations between variables",
+        "• They affect both the treatment and outcome variables",
+        "• Controlling for confounders is crucial for accurate causal inference",
+        "",
+        "#### 📊 Recommendations",
+        "",
+        "1. Include these variables in your data collection plan",
+        "2. Use appropriate statistical methods to control for their effects",
+        "3. Consider stratification or matching based on these variables",
+        "4. Document any unmeasured confounders that might affect your analysis",
+        ""
+    ])
     
     return "\n".join(formatted_output)
 
 def format_relationship_output(relationships):
-    """Format relationships into human-readable text with explanations."""
+    """Format relationships into readable text with explanations."""
     if not relationships:
         return "_No relationships identified._"
     
     formatted_output = []
-    formatted_output.append("### Identified Causal Relationships")
-    formatted_output.append("")
+    formatted_output.append('<div class="output-section">')
     
-    for rel in relationships:
-        if isinstance(rel, (list, tuple)) and len(rel) >= 2:
-            source = str(rel[0]).replace('_', ' ').title()
-            target = str(rel[1]).replace('_', ' ').title()
-            
-            if len(rel) == 3 and isinstance(rel[2], (int, float)):
-                formatted_output.extend([
-                    f"• {source} has an effect on {target}",
-                    f"  Confidence Level: {'High' if rel[2] > 0.7 else 'Medium' if rel[2] > 0.4 else 'Low'}",
-                    f"  💡 Analysis suggests that changes in {source.lower()} may lead to changes in {target.lower()}.",
-                    ""
-                ])
-            else:
-                formatted_output.extend([
-                    f"• {source} may influence {target}",
-                    f"  💡 There appears to be a relationship where {source.lower()} affects {target.lower()}.",
-                    ""
-                ])
-        elif isinstance(rel, dict):
-            for source, targets in rel.items():
-                source = str(source).replace('_', ' ').title()
-                if isinstance(targets, (list, tuple)):
-                    for target in targets:
-                        target = str(target).replace('_', ' ').title()
-                        formatted_output.extend([
-                            f"• {source} is connected to {target}",
-                            f"  💡 The analysis indicates that {source.lower()} might have an impact on {target.lower()}.",
-                            ""
-                        ])
+    def format_name(name):
+        """Format variable names consistently."""
+        return str(name).replace('_', ' ').strip().title()
+    
+    def get_confidence_class(score):
+        """Get CSS class for confidence level."""
+        if score > 0.7:
+            return "confidence-high"
+        elif score > 0.4:
+            return "confidence-medium"
+        return "confidence-low"
+    
+    if isinstance(relationships, (list, tuple)):
+        for rel in relationships:
+            if isinstance(rel, (list, tuple)) and len(rel) >= 2:
+                source = format_name(rel[0])
+                target = format_name(rel[1])
+                
+                formatted_output.append('<div class="output-item">')
+                formatted_output.append(f'<h4>{source} <span class="relationship-arrow">➜</span> {target}</h4>')
+                
+                if len(rel) == 3 and isinstance(rel[2], (int, float)):
+                    confidence_class = get_confidence_class(rel[2])
+                    formatted_output.extend([
+                        f'<p>Confidence Level: <span class="{confidence_class}">{get_confidence_level(rel[2])}</span></p>',
+                        f'<p>Relationship Strength: {rel[2]:.2f}</p>',
+                        f'<p>💡 {source} appears to have a {get_confidence_level(rel[2]).lower()} influence on {target}.</p>'
+                    ])
+                else:
+                    formatted_output.extend([
+                        '<p>Relationship Type: Direct</p>',
+                        f'<p>💡 {source} may influence {target} directly.</p>'
+                    ])
+                formatted_output.append('</div>')
     
     # Add explanation section
     formatted_output.extend([
-        "🔍 Understanding These Relationships:",
-        "• Strong relationships suggest direct causal effects",
-        "• Medium relationships may indicate indirect effects",
-        "• Low confidence relationships need further investigation",
-        "",
-        "📊 What This Means for Your Analysis:",
-        "• Consider these relationships when designing interventions",
-        "• Account for indirect effects in your analysis",
-        "• Focus on stronger relationships for primary conclusions"
+        '<div class="explanation-box">',
+        '<h4>🔍 Understanding These Relationships</h4>',
+        '<ul>',
+        '<li>Strong relationships suggest direct causal effects</li>',
+        '<li>Medium relationships may indicate indirect effects</li>',
+        '<li>Low confidence relationships need further investigation</li>',
+        '</ul>',
+        '</div>',
+        '<div class="recommendation-box">',
+        '<h4>📊 Recommendations</h4>',
+        '<ol>',
+        '<li>Focus on strong relationships for primary analysis</li>',
+        '<li>Consider indirect effects in your model</li>',
+        '<li>Validate relationships with domain experts</li>',
+        '<li>Look for potential mediating variables</li>',
+        '</ol>',
+        '</div>',
+        '</div>'
     ])
     
     return "\n".join(formatted_output)
@@ -245,39 +519,60 @@ def format_critiques(critiques):
     def format_single_critique(critique):
         return str(critique).replace('_', ' ').title()
     
+    formatted_output = []
+    formatted_output.append('<div class="output-section">')
+    
     if isinstance(critiques, dict):
-        formatted_output = []
         for category, items in critiques.items():
-            formatted_output.append(f"### {str(category).replace('_', ' ').title()}")
-            formatted_output.append("")  # Add spacing after category
+            formatted_output.append(f'<h4>{str(category).replace("_", " ").title()}</h4>')
             
             if isinstance(items, list):
                 for item in items:
                     formatted_output.extend([
-                        f"• {format_single_critique(item)}",
-                        f"  💡 {generate_critique_explanation(category, item)}",
-                        ""  # Add blank line
+                        '<div class="output-item">',
+                        f'<p>{format_single_critique(item)}</p>',
+                        f'<p>💡 {generate_critique_explanation(category, item)}</p>',
+                        '</div>'
                     ])
             else:
                 formatted_output.extend([
-                    f"• {format_single_critique(items)}",
-                    f"  💡 {generate_critique_explanation(category, items)}",
-                    ""  # Add blank line
+                    '<div class="output-item">',
+                    f'<p>{format_single_critique(items)}</p>',
+                    f'<p>💡 {generate_critique_explanation(category, items)}</p>',
+                    '</div>'
                 ])
-            
-            formatted_output.append("")  # Add extra spacing between categories
-        return "\n".join(formatted_output)
     elif isinstance(critiques, list):
-        formatted_output = []
         for critique in critiques:
             formatted_output.extend([
-                f"• {format_single_critique(critique)}",
-                f"  💡 {generate_critique_explanation('general', critique)}",
-                ""  # Add blank line
+                '<div class="output-item">',
+                f'<p>{format_single_critique(critique)}</p>',
+                f'<p>💡 {generate_critique_explanation("general", critique)}</p>',
+                '</div>'
             ])
-        return "\n".join(formatted_output)
-    else:
-        return f"• {format_single_critique(critiques)}\n  💡 {generate_critique_explanation('general', critiques)}"
+    
+    # Add explanation section
+    formatted_output.extend([
+        '<div class="explanation-box">',
+        '<h4>🔍 Understanding These Critiques</h4>',
+        '<ul>',
+        '<li>Each critique points to potential improvements in your causal model</li>',
+        '<li>Address high-priority critiques first to strengthen your analysis</li>',
+        '<li>Consider the practical feasibility of implementing suggested changes</li>',
+        '</ul>',
+        '</div>',
+        '<div class="recommendation-box">',
+        '<h4>📊 Next Steps</h4>',
+        '<ol>',
+        '<li>Review each critique and assess its impact on your analysis</li>',
+        '<li>Prioritize changes based on feasibility and importance</li>',
+        '<li>Document any limitations that cannot be addressed</li>',
+        '<li>Update your model iteratively as you address each point</li>',
+        '</ol>',
+        '</div>',
+        '</div>'
+    ])
+    
+    return "\n".join(formatted_output)
 
 def generate_critique_explanation(category, critique):
     """Generate human-readable explanations for critiques."""
@@ -296,59 +591,83 @@ def generate_critique_explanation(category, critique):
         return "Consider this point to improve your causal analysis."
 
 def format_variables(variables):
-    """Format variables into human-readable text with explanations."""
-    if not variables:
-        return "_No variables identified._"
+    """Format the confounding variables output with HTML/CSS styling"""
+    output = '<div class="output-section">'
+    output += '<div class="section-title">Identified Confounding Variables</div>'
     
-    formatted_output = []
-    formatted_output.append("### Key Variables in Your Analysis")
-    formatted_output.append("")
+    for var in variables:
+        confidence = var.get('confidence', 'medium').lower()
+        output += f'''
+            <div class="output-item">
+                <div class="confidence-level {confidence}-confidence">
+                    Confidence: {confidence.title()}
+                </div>
+                <div class="variable-name">{var.get('name', '')}</div>
+                <div class="explanation-box">
+                    <strong>Impact:</strong> {var.get('impact', '')}
+                </div>
+                <div class="recommendation-box">
+                    <strong>Recommendation:</strong> {var.get('recommendation', '')}
+                </div>
+            </div>
+        '''
     
-    if isinstance(variables, (list, tuple)):
-        for var in variables:
-            name = str(var).replace('_', ' ').title()
-            formatted_output.extend([
-                f"• {name}",
-                f"  💡 This is an important factor to consider in your analysis.",
-                ""
-            ])
-    elif isinstance(variables, dict):
-        for category, vars in variables.items():
-            category_name = str(category).replace('_', ' ').title()
-            formatted_output.append(f"Category: {category_name}")
-            formatted_output.append("")
-            
-            if isinstance(vars, (list, tuple)):
-                for var in vars:
-                    name = str(var).replace('_', ' ').title()
-                    formatted_output.extend([
-                        f"• {name}",
-                        f"  💡 This variable is relevant in the {category_name.lower()} context.",
-                        ""
-                    ])
-            else:
-                name = str(vars).replace('_', ' ').title()
-                formatted_output.extend([
-                    f"• {name}",
-                    f"  💡 This is a key factor in the {category_name.lower()} category.",
-                    ""
-                ])
-            formatted_output.append("")
+    output += '</div>'
+    return output
+
+def format_relationship_output(relationships):
+    """Format the causal relationships output with HTML/CSS styling"""
+    output = '<div class="output-section">'
+    output += '<div class="section-title">Identified Causal Relationships</div>'
     
-    # Add explanation section
-    formatted_output.extend([
-        "🔍 Understanding Your Variables:",
-        "• Each variable plays a specific role in your causal model",
-        "• Consider how variables interact with each other",
-        "• Think about how to measure each variable accurately",
-        "",
-        "📊 Next Steps:",
-        "• Ensure you have data for all identified variables",
-        "• Consider potential measurement challenges",
-        "• Plan how to handle missing data"
-    ])
+    for rel in relationships:
+        confidence = rel.get('confidence', 'medium').lower()
+        output += f'''
+            <div class="output-item">
+                <div class="confidence-level {confidence}-confidence">
+                    Confidence: {confidence.title()}
+                </div>
+                <div class="relationship">
+                    <span class="cause">{rel.get('cause', '')}</span>
+                    <span class="arrow">→</span>
+                    <span class="effect">{rel.get('effect', '')}</span>
+                </div>
+                <div class="explanation-box">
+                    <strong>Explanation:</strong> {rel.get('explanation', '')}
+                </div>
+                <div class="recommendation-box">
+                    <strong>Recommendation:</strong> {rel.get('recommendation', '')}
+                </div>
+            </div>
+        '''
     
-    return "\n".join(formatted_output)
+    output += '</div>'
+    return output
+
+def format_critiques(critiques):
+    """Format the critiques output with HTML/CSS styling"""
+    output = '<div class="output-section">'
+    output += '<div class="section-title">Analysis Critiques</div>'
+    
+    for critique in critiques:
+        confidence = critique.get('confidence', 'medium').lower()
+        output += f'''
+            <div class="output-item">
+                <div class="confidence-level {confidence}-confidence">
+                    Confidence: {confidence.title()}
+                </div>
+                <div class="critique-point">{critique.get('point', '')}</div>
+                <div class="explanation-box">
+                    <strong>Details:</strong> {critique.get('details', '')}
+                </div>
+                <div class="recommendation-box">
+                    <strong>Suggestion:</strong> {critique.get('suggestion', '')}
+                </div>
+            </div>
+        '''
+    
+    output += '</div>'
+    return output
 
 def validate_dag_input(dag_str):
     """Validate DAG input and return tuple of (is_valid, dag_dict, error_message)."""
@@ -671,27 +990,37 @@ else:
                 for rel in relationships:
                     st.markdown(rel)
 
+                # Create a row for all buttons
                 col1, col2, col3 = st.columns(3)
                 
                 with col1:
-                    if st.button("🔍 Critique DAG"):
+                    critique_clicked = st.button("🔍 Critique DAG")
+                with col2:
+                    confounders_clicked = st.button("🔍 Find Latent Confounders")
+                with col3:
+                    controls_clicked = st.button("🔍 Find Negative Controls")
+                
+                # Create a container for results below all buttons
+                results_container = st.container()
+                
+                with results_container:
+                    if critique_clicked:
                         if all_factors and suggested_dag and st.session_state.domain_expertises is not None:
                             suggested_critiques_dag = validator.critique_graph(
                                 all_factors, suggested_dag, st.session_state.domain_expertises, RelationshipStrategy.Pairwise
                             )
-                            st.subheader("📋 DAG Structure Critique:")
+                            st.markdown("### 📋 DAG Structure Critique")
                             formatted_critiques = format_critiques(convert_tuples_to_lists(suggested_critiques_dag))
                             st.markdown(formatted_critiques)
                         else:
                             st.warning("Please ensure factors, DAG, and domain expertises are provided.")
 
-                with col2:
-                    if st.button("🔍 Find Latent Confounders"):
+                    if confounders_clicked:
                         if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
                             suggested_latent_confounders = validator.suggest_latent_confounders(
                                 treatment, outcome, all_factors, st.session_state.domain_expertises
                             )
-                            st.subheader("🎯 Suggested Latent Confounders:")
+                            st.markdown("### 🎯 Potential Latent Confounders")
                             formatted_confounders = format_variables(convert_tuples_to_lists(suggested_latent_confounders))
                             st.markdown(formatted_confounders)
                             
@@ -700,13 +1029,12 @@ else:
                         else:
                             st.warning("Please ensure treatment, outcome, factors, and domain expertises are provided.")
 
-                with col3:
-                    if st.button("🔍 Find Negative Controls"):
+                    if controls_clicked:
                         if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
                             suggested_negative_controls = validator.suggest_negative_controls(
                                 treatment, outcome, all_factors, st.session_state.domain_expertises
                             )
-                            st.subheader("🎯 Suggested Negative Controls:")
+                            st.markdown("### 🎯 Suggested Negative Controls")
                             formatted_controls = format_variables(convert_tuples_to_lists(suggested_negative_controls))
                             st.markdown(formatted_controls)
                             
