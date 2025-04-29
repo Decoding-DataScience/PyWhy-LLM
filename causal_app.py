@@ -76,22 +76,22 @@ def format_relationship_output(relationships):
     formatted_output = []
     for rel in relationships:
         if isinstance(rel, (list, tuple)) and len(rel) >= 2:
-            # Handle relationship tuples/lists with scores
+            # Format relationship scores with better readability
             if len(rel) == 3 and isinstance(rel[2], (int, float)):
-                formatted_output.append(f"• {rel[0]} → {rel[1]} (score: {rel[2]})")
+                formatted_output.append(f"• {rel[0]} affects {rel[1]} (confidence score: {rel[2]:.2f})")
             else:
-                formatted_output.append(f"• {rel[0]} → {rel[1]}")
+                formatted_output.append(f"• {rel[0]} affects {rel[1]}")
         elif isinstance(rel, dict):
-            # Handle dictionary format
+            # Handle dictionary format with improved readability
             for source, targets in rel.items():
                 if isinstance(targets, list):
                     for target in targets:
-                        formatted_output.append(f"• {source} → {target}")
+                        formatted_output.append(f"• {source} influences {target}")
                 else:
-                    formatted_output.append(f"• {source} → {targets}")
+                    formatted_output.append(f"• {source} influences {targets}")
         else:
-            # Fallback for other formats
-            formatted_output.append(f"• {rel}")
+            # Improved formatting for other formats
+            formatted_output.append(f"• Relationship: {rel}")
     
     return "\n".join(formatted_output)
 
@@ -138,22 +138,24 @@ def format_critiques(critiques):
 def format_variables(variables):
     """Format variables into readable text."""
     if not variables:
-        return "_No variables found._"
+        return "_No variables identified._"
     
     if isinstance(variables, list):
-        return "\n".join([f"- {var}" for var in variables])
+        # Add bullet points and better formatting for lists
+        return "\n".join([f"• {var.replace('_', ' ').title()}" for var in variables])
     elif isinstance(variables, dict):
         formatted_output = []
         for category, vars in variables.items():
-            formatted_output.append(f"### {category}")
+            # Format category headers with better styling
+            formatted_output.append(f"### {category.replace('_', ' ').title()}")
             if isinstance(vars, list):
-                formatted_output.extend([f"- {var}" for var in vars])
+                formatted_output.extend([f"• {var.replace('_', ' ').title()}" for var in vars])
             else:
-                formatted_output.append(f"- {vars}")
+                formatted_output.append(f"• {str(vars).replace('_', ' ').title()}")
             formatted_output.append("")
         return "\n".join(formatted_output)
     else:
-        return str(variables)
+        return f"• {str(variables).replace('_', ' ').title()}"
 
 def validate_dag_input(dag_str):
     """Validate DAG input and return tuple of (is_valid, dag_dict, error_message)."""
@@ -253,28 +255,39 @@ else:
         
         st.markdown('<p class="subsection-header">Variables Input</p>', unsafe_allow_html=True)
         
+        # Updated help text with more domain examples
         factors_help = """
         Examples by domain:
-        🏥 Medical: "smoking, lung cancer, exercise habits"
-        📚 Education: "study hours, test scores, sleep quality"
-        💰 Economics: "interest rates, inflation, unemployment"
+        🏥 Medical: "smoking, lung cancer, exercise habits, air pollution"
+        📚 Education: "study hours, test scores, sleep quality, stress"
+        💰 Economics: "interest rates, inflation, unemployment, gdp"
+        🌍 Environmental: "co2 emissions, temperature, deforestation, rainfall"
         """
         
+        # Default example for medical domain
+        default_factors = "smoking, lung cancer, exercise habits, air pollution exposure"
         all_factors_str = st.text_area(
             "📝 Enter all relevant factors (comma-separated):", 
-            "smoking, lung cancer, exercise habits, air pollution exposure",
-            help=factors_help
+            value=default_factors,
+            help=factors_help,
+            placeholder="Enter factors like: smoking, lung cancer, exercise habits..."
         )
         all_factors = [factor.strip() for factor in all_factors_str.split(',')]
 
+        # Default example for treatment variable
         treatment = st.text_input(
             "🎯 Enter the treatment variable:",
-            help="The variable you're studying the effect of"
+            value="smoking",
+            help="The variable whose effect you want to study (e.g., smoking, study hours, exercise)",
+            placeholder="Enter treatment variable (e.g., smoking)"
         )
 
+        # Default example for outcome variable
         outcome = st.text_input(
             "🎯 Enter the outcome variable:",
-            help="The variable you want to measure the effect on"
+            value="lung cancer",
+            help="The variable you want to measure the effect on (e.g., lung cancer, test score, health)",
+            placeholder="Enter outcome variable (e.g., lung cancer)"
         )
 
     with col2:
@@ -310,8 +323,15 @@ else:
                 if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
                     suggested_confounders = modeler.suggest_confounders(treatment, outcome, all_factors, st.session_state.domain_expertises)
                     st.subheader("Suggested Potential Confounders:")
-                    formatted_confounders = format_variables(convert_tuples_to_lists(suggested_confounders))
+                    # Improved formatting for confounders
+                    if isinstance(suggested_confounders, list):
+                        formatted_confounders = "\n".join([f"• {conf.replace('_', ' ').title()}" for conf in suggested_confounders])
+                    else:
+                        formatted_confounders = format_variables(convert_tuples_to_lists(suggested_confounders))
                     st.markdown(formatted_confounders)
+                    
+                    # Add explanation box
+                    st.info("💡 These confounding variables might affect both your treatment and outcome variables. Consider controlling for them in your analysis.")
                 else:
                     st.warning("Please ensure treatment, outcome, factors, and domain expertises are provided.")
 
