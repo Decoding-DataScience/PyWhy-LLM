@@ -43,11 +43,20 @@ st.markdown("""
     /* Section Headers */
     .section-header {
         color: #2E7D32;
-        font-size: 24px;
+        font-size: 26px;
         font-weight: 600;
         margin: 25px 0 15px 0;
         padding-bottom: 8px;
         border-bottom: 2px solid #2E7D32;
+        font-family: 'Segoe UI', Arial, sans-serif;
+    }
+
+    /* Sub-section Headers */
+    .section-subtitle {
+        color: #1E88E5;
+        font-size: 20px;
+        font-weight: 500;
+        margin: 20px 0 10px 0;
         font-family: 'Segoe UI', Arial, sans-serif;
     }
 
@@ -62,21 +71,32 @@ st.markdown("""
         font-family: 'Segoe UI', Arial, sans-serif;
     }
 
-    .info-box ul {
-        list-style-type: none;
-        padding-left: 0;
+    .info-box ul, .info-box ol {
         margin: 10px 0;
+        padding-left: 25px;
     }
 
     .info-box li {
-        padding: 8px 0 8px 25px;
+        padding: 8px 0;
         position: relative;
     }
 
+    /* Remove bullet points styling */
+    .info-box ul {
+        list-style-type: decimal;
+    }
+
     .info-box li:before {
-        content: "•";
-        position: absolute;
-        left: 8px;
+        content: none;
+    }
+
+    /* Info Box Headers */
+    .info-box h3 {
+        color: #1E88E5;
+        font-size: 22px;
+        font-weight: 500;
+        margin: 0 0 15px 0;
+        font-family: 'Segoe UI', Arial, sans-serif;
     }
 
     /* Step Box */
@@ -141,15 +161,42 @@ st.markdown("""
         font-family: 'Segoe UI', Arial, sans-serif;
     }
 
-    /* Model Suggestion Step Title */
+    /* Model Step Title */
     .model-step-title {
-        font-size: 28px;
+        font-size: 30px;
         color: #1E88E5;
         font-weight: 600;
         padding: 15px;
         background-color: #E3F2FD;
         border-radius: 8px;
         margin: 20px 0;
+        font-family: 'Segoe UI', Arial, sans-serif;
+    }
+
+    /* Output Section Title */
+    .section-title {
+        color: #1E88E5;
+        font-size: 24px;
+        font-weight: 600;
+        margin: 20px 0 15px 0;
+        font-family: 'Segoe UI', Arial, sans-serif;
+    }
+
+    /* Explanation and Recommendation Headers */
+    .explanation-box h4, .recommendation-box h4 {
+        color: #2c3e50;
+        margin: 0 0 12px 0;
+        font-size: 18px;
+        font-weight: 500;
+        font-family: 'Segoe UI', Arial, sans-serif;
+    }
+
+    /* Output Item Headers */
+    .output-item h4 {
+        color: #2c3e50;
+        margin: 0 0 12px 0;
+        font-size: 18px;
+        font-weight: 500;
         font-family: 'Segoe UI', Arial, sans-serif;
     }
     </style>
@@ -173,12 +220,6 @@ def apply_custom_css():
             padding: 15px;
             margin: 15px 0;
             border-radius: 0 5px 5px 0;
-        }
-        
-        .output-item h4 {
-            color: #2c3e50;
-            margin: 0 0 10px 0;
-            font-size: 1.1em;
         }
         
         .output-item p {
@@ -223,12 +264,6 @@ def apply_custom_css():
         
         .recommendation-box {
             border-left: 4px solid #2ecc71;
-        }
-        
-        .explanation-box h4, .recommendation-box h4 {
-            color: #2c3e50;
-            margin: 0 0 10px 0;
-            font-size: 1.1em;
         }
         
         .explanation-box ul, .recommendation-box ol {
@@ -697,7 +732,7 @@ else:
     with col1:
         st.markdown('<h2 class="section-header">Analysis Configuration</h2>', unsafe_allow_html=True)
         
-        llm_model = st.selectbox("�� Choose LLM Model", ["gpt-4"])
+        llm_model = st.selectbox("Choose LLM Model", ["gpt-4"])
         
         analysis_type = st.selectbox(
             "📊 Choose Analysis Step",
