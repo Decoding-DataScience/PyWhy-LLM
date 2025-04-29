@@ -359,25 +359,26 @@ def format_confounder_output(confounders):
         
         output = f'''
             <div class="output-item">
-                <div class="variable-name">{source} → {target}</div>
+                <h4>{source} → {target}</h4>
         '''
         
         if score:
             confidence = "High" if score > 0.7 else "Medium" if score > 0.4 else "Low"
-            confidence_class = f"{confidence.lower()}-confidence"
+            confidence_class = f"confidence-{confidence.lower()}"
             output += f'''
-                <div class="confidence-level {confidence_class}">
-                    Confidence: {confidence}
+                <div class="{confidence_class}">
+                    Confidence Level: {confidence}
+                    <br>
+                    Relationship Strength: {score:.2f}
                 </div>
                 <div class="explanation-box">
-                    <div>Relationship Strength: {score:.2f}</div>
-                    <div>💡 {source} shows a {confidence.lower()} likelihood of being a confounder.</div>
+                    <p>💡 {source} shows a {confidence.lower()} likelihood of being a confounder.</p>
                 </div>
             '''
         else:
             output += f'''
                 <div class="explanation-box">
-                    <div>💡 {source} may act as a confounder through its relationship with {target}.</div>
+                    <p>💡 {source} may act as a confounder through its relationship with {target}.</p>
                 </div>
             '''
         
@@ -385,7 +386,7 @@ def format_confounder_output(confounders):
         return output
     
     output = '<div class="output-section">'
-    output += '<div class="section-title">Identified Confounding Variables</div>'
+    output += '<h3 class="section-title">Identified Confounding Variables</h3>'
     
     if isinstance(confounders, (list, tuple)):
         for item in confounders:
@@ -393,35 +394,38 @@ def format_confounder_output(confounders):
                 if len(item) >= 2:
                     output += format_relationship(item[0], item[1], item[2] if len(item) > 2 else None)
             else:
-                # Handle single variables
                 var_name = format_variable_name(item)
                 output += f'''
                     <div class="output-item">
-                        <div class="variable-name">{var_name}</div>
+                        <h4>{var_name}</h4>
                         <div class="explanation-box">
-                            <div>💡 This variable may confound the relationship between treatment and outcome.</div>
+                            <p>💡 This variable may confound the relationship between treatment and outcome.</p>
                         </div>
                     </div>
                 '''
     
-    # Add detailed explanation section
+    # Add explanation section with improved formatting
     output += '''
         <div class="explanation-section">
-            <div class="section-subtitle">🔍 Understanding Confounding Variables</div>
+            <h4 class="section-subtitle">🔍 Understanding Confounding Variables</h4>
             <div class="explanation-list">
-                <div class="explanation-item">• Confounders can create spurious associations between variables</div>
-                <div class="explanation-item">• They affect both the treatment and outcome variables</div>
-                <div class="explanation-item">• Controlling for confounders is crucial for accurate causal inference</div>
+                <ol>
+                    <li>Confounders can create spurious associations between variables</li>
+                    <li>They affect both the treatment and outcome variables</li>
+                    <li>Controlling for confounders is crucial for accurate causal inference</li>
+                </ol>
             </div>
         </div>
         
         <div class="recommendation-section">
-            <div class="section-subtitle">📊 Recommendations</div>
+            <h4 class="section-subtitle">📊 Recommendations</h4>
             <div class="recommendation-list">
-                <div class="recommendation-item">1. Include these variables in your data collection plan</div>
-                <div class="recommendation-item">2. Use appropriate statistical methods to control for their effects</div>
-                <div class="recommendation-item">3. Consider stratification or matching based on these variables</div>
-                <div class="recommendation-item">4. Document any unmeasured confounders that might affect your analysis</div>
+                <ol>
+                    <li>Include these variables in your data collection plan</li>
+                    <li>Use appropriate statistical methods to control for their effects</li>
+                    <li>Consider stratification or matching based on these variables</li>
+                    <li>Document any unmeasured confounders that might affect your analysis</li>
+                </ol>
             </div>
         </div>
     '''
@@ -435,7 +439,7 @@ def format_relationship_output(relationships):
         return "_No relationships identified._"
     
     output = '<div class="output-section">'
-    output += '<div class="section-title">Identified Causal Relationships</div>'
+    output += '<h3 class="section-title">Identified Causal Relationships</h3>'
     
     if isinstance(relationships, (list, tuple)):
         for rel in relationships:
@@ -451,47 +455,36 @@ def format_relationship_output(relationships):
                 
                 output += f'''
                     <div class="output-item">
-                        <div class="confidence-level {confidence}-confidence">
-                            Confidence: {confidence.title()}
+                        <h4>{source} → {target}</h4>
+                        <div class="confidence-{confidence}">
+                            Confidence Level: {confidence.title()}
+                            {f"<br>Relationship Strength: {confidence_score:.2f}" if confidence_score is not None else ""}
                         </div>
-                        <div class="relationship">
-                            {source} → {target}
-                        </div>
-                '''
-                
-                if confidence_score is not None:
-                    output += f'''
-                        <div class="explanation-box">
-                            <div><strong>Relationship Strength:</strong> {confidence_score:.2f}</div>
-                        </div>
-                    '''
-                
-                output += f'''
                         <div class="recommendation-box">
-                            <div><strong>Recommendation:</strong> {get_relationship_recommendation(confidence)}</div>
+                            <p><strong>Recommendation:</strong> {get_relationship_recommendation(confidence)}</p>
                         </div>
                     </div>
                 '''
     
-    # Add explanation section
+    # Add explanation section with improved formatting
     output += '''
         <div class="explanation-section">
-            <div class="section-subtitle">🔍 Understanding These Relationships</div>
-            <div class="explanation-list">
-                <div class="explanation-item">• Strong relationships suggest direct causal effects</div>
-                <div class="explanation-item">• Medium relationships may indicate indirect effects</div>
-                <div class="explanation-item">• Low confidence relationships need further investigation</div>
-            </div>
+            <h4 class="section-subtitle">🔍 Understanding These Relationships</h4>
+            <ol>
+                <li>Strong relationships suggest direct causal effects</li>
+                <li>Medium relationships may indicate indirect effects</li>
+                <li>Low confidence relationships need further investigation</li>
+            </ol>
         </div>
         
         <div class="recommendation-section">
-            <div class="section-subtitle">📊 Next Steps</div>
-            <div class="recommendation-list">
-                <div class="recommendation-item">1. Focus on strong relationships for primary analysis</div>
-                <div class="recommendation-item">2. Consider indirect effects in your model</div>
-                <div class="recommendation-item">3. Validate relationships with domain experts</div>
-                <div class="recommendation-item">4. Look for potential mediating variables</div>
-            </div>
+            <h4 class="section-subtitle">📊 Next Steps</h4>
+            <ol>
+                <li>Focus on strong relationships for primary analysis</li>
+                <li>Consider indirect effects in your model</li>
+                <li>Validate relationships with domain experts</li>
+                <li>Look for potential mediating variables</li>
+            </ol>
         </div>
     '''
     
@@ -543,60 +536,71 @@ def format_critiques(critiques):
     def format_single_critique(critique):
         return str(critique).replace('_', ' ').title()
     
-    formatted_output = []
-    formatted_output.append('<div class="output-section">')
+    output = '<div class="output-section">'
+    output += '<h3 class="section-title">Analysis Critiques</h3>'
     
     if isinstance(critiques, dict):
         for category, items in critiques.items():
-            formatted_output.append(f'<h4>{str(category).replace("_", " ").title()}</h4>')
+            output += f'<h4 class="section-subtitle">{str(category).replace("_", " ").title()}</h4>'
             
             if isinstance(items, list):
+                output += '<div class="critique-list">'
                 for item in items:
-                    formatted_output.extend([
-                        '<div class="output-item">',
-                        f'<p>{format_single_critique(item)}</p>',
-                        f'<p>💡 {generate_critique_explanation(category, item)}</p>',
-                        '</div>'
-                    ])
+                    output += f'''
+                        <div class="output-item">
+                            <h4>{format_single_critique(item)}</h4>
+                            <div class="explanation-box">
+                                <p>💡 {generate_critique_explanation(category, item)}</p>
+                            </div>
+                        </div>
+                    '''
+                output += '</div>'
             else:
-                formatted_output.extend([
-                    '<div class="output-item">',
-                    f'<p>{format_single_critique(items)}</p>',
-                    f'<p>💡 {generate_critique_explanation(category, items)}</p>',
-                    '</div>'
-                ])
+                output += f'''
+                    <div class="output-item">
+                        <h4>{format_single_critique(items)}</h4>
+                        <div class="explanation-box">
+                            <p>💡 {generate_critique_explanation(category, items)}</p>
+                        </div>
+                    </div>
+                '''
     elif isinstance(critiques, list):
+        output += '<div class="critique-list">'
         for critique in critiques:
-            formatted_output.extend([
-                '<div class="output-item">',
-                f'<p>{format_single_critique(critique)}</p>',
-                f'<p>💡 {generate_critique_explanation("general", critique)}</p>',
-                '</div>'
-            ])
+            output += f'''
+                <div class="output-item">
+                    <h4>{format_single_critique(critique)}</h4>
+                    <div class="explanation-box">
+                        <p>💡 {generate_critique_explanation("general", critique)}</p>
+                    </div>
+                </div>
+            '''
+        output += '</div>'
     
-    # Add explanation section
-    formatted_output.extend([
-        '<div class="explanation-box">',
-        '<h4>🔍 Understanding These Critiques</h4>',
-        '<ul>',
-        '<li>Each critique points to potential improvements in your causal model</li>',
-        '<li>Address high-priority critiques first to strengthen your analysis</li>',
-        '<li>Consider the practical feasibility of implementing suggested changes</li>',
-        '</ul>',
-        '</div>',
-        '<div class="recommendation-box">',
-        '<h4>📊 Next Steps</h4>',
-        '<ol>',
-        '<li>Review each critique and assess its impact on your analysis</li>',
-        '<li>Prioritize changes based on feasibility and importance</li>',
-        '<li>Document any limitations that cannot be addressed</li>',
-        '<li>Update your model iteratively as you address each point</li>',
-        '</ol>',
-        '</div>',
-        '</div>'
-    ])
+    # Add explanation section with improved formatting
+    output += '''
+        <div class="explanation-section">
+            <h4 class="section-subtitle">🔍 Understanding These Critiques</h4>
+            <ol>
+                <li>Each critique points to potential improvements in your causal model</li>
+                <li>Address high-priority critiques first to strengthen your analysis</li>
+                <li>Consider the practical feasibility of implementing suggested changes</li>
+            </ol>
+        </div>
+        
+        <div class="recommendation-section">
+            <h4 class="section-subtitle">📊 Next Steps</h4>
+            <ol>
+                <li>Review each critique and assess its impact on your analysis</li>
+                <li>Prioritize changes based on feasibility and importance</li>
+                <li>Document any limitations that cannot be addressed</li>
+                <li>Update your model iteratively as you address each point</li>
+            </ol>
+        </div>
+    '''
     
-    return "\n".join(formatted_output)
+    output += '</div>'
+    return output
 
 def generate_critique_explanation(category, critique):
     """Generate human-readable explanations for critiques."""
@@ -616,25 +620,44 @@ def generate_critique_explanation(category, critique):
 
 def format_variables(variables):
     """Format the confounding variables output with HTML/CSS styling"""
+    if not variables:
+        return "_No variables identified._"
+        
     output = '<div class="output-section">'
-    output += '<div class="section-title">Identified Confounding Variables</div>'
+    output += '<h3 class="section-title">Identified Variables</h3>'
     
     for var in variables:
         confidence = var.get('confidence', 'medium').lower()
+        name = var.get('name', '')
+        impact = var.get('impact', '')
+        recommendation = var.get('recommendation', '')
+        
         output += f'''
             <div class="output-item">
-                <div class="confidence-level {confidence}-confidence">
-                    Confidence: {confidence.title()}
+                <h4>{name}</h4>
+                <div class="confidence-{confidence}">
+                    Confidence Level: {confidence.title()}
                 </div>
-                <div class="variable-name">{var.get('name', '')}</div>
                 <div class="explanation-box">
-                    <strong>Impact:</strong> {var.get('impact', '')}
+                    <p><strong>Impact:</strong> {impact}</p>
                 </div>
                 <div class="recommendation-box">
-                    <strong>Recommendation:</strong> {var.get('recommendation', '')}
+                    <p><strong>Recommendation:</strong> {recommendation}</p>
                 </div>
             </div>
         '''
+    
+    # Add explanation section
+    output += '''
+        <div class="explanation-section">
+            <h4 class="section-subtitle">🔍 Understanding Variable Impacts</h4>
+            <ol>
+                <li>High confidence variables should be prioritized in your analysis</li>
+                <li>Consider both direct and indirect effects of each variable</li>
+                <li>Pay attention to variables with strong theoretical support</li>
+            </ol>
+        </div>
+    '''
     
     output += '</div>'
     return output
