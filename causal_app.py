@@ -1185,6 +1185,339 @@ Your response:"""
         st.error(f"Error suggesting backdoor set: {str(e)}")
         return None
 
+def suggest_mediator_from_factors(treatment, outcome, factors, openai_api_key):
+    """Use OpenAI to suggest mediator variables."""
+    from openai import OpenAI
+    
+    if not factors or not treatment or not outcome:
+        return None
+    
+    try:
+        client = OpenAI(api_key=openai_api_key)
+        
+        prompt = f"""Given a causal analysis with:
+Treatment: {treatment}
+Outcome: {outcome}
+All factors: {', '.join(factors)}
+
+Please identify potential mediator variables - variables that lie on the causal path between {treatment} and {outcome}.
+
+Consider the example of how school quality affects job offers through college admission:
+- College admission is a mediator because:
+  1. School quality affects college admission chances
+  2. College admission then affects job offers
+  3. It's on the causal path between treatment and outcome
+
+Format your response as a list of mediators with explanations:
+[
+    ["college_admission", "mediates between school quality and job offers", 0.8],
+    ["academic_performance", "links school quality to college prospects", 0.7]
+]
+
+Include confidence scores (0-1) based on strength of mediation.
+
+Your response:"""
+
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a causal inference expert helping to identify mediating variables."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=200
+        )
+        
+        try:
+            suggestion = response.choices[0].message.content.strip()
+            suggestion = suggestion.replace("'", '"')
+            
+            import re
+            list_pattern = r'\[([\s\S]*)\]'
+            match = re.search(list_pattern, suggestion)
+            if match:
+                suggestion = f"[{match.group(1)}]"
+            
+            try:
+                mediators = json.loads(suggestion)
+            except json.JSONDecodeError:
+                import ast
+                mediators = ast.literal_eval(suggestion)
+            
+            return mediators if mediators else None
+            
+        except Exception as e:
+            st.error(f"Error parsing mediator suggestion: {str(e)}")
+            return None
+            
+    except Exception as e:
+        st.error(f"Error suggesting mediators: {str(e)}")
+        return None
+
+def suggest_iv_from_factors(treatment, outcome, factors, openai_api_key):
+    """Use OpenAI to suggest instrumental variables."""
+    from openai import OpenAI
+    
+    if not factors or not treatment or not outcome:
+        return None
+    
+    try:
+        client = OpenAI(api_key=openai_api_key)
+        
+        prompt = f"""Given a causal analysis with:
+Treatment: {treatment}
+Outcome: {outcome}
+All factors: {', '.join(factors)}
+
+Please identify potential instrumental variables (IVs) that could help estimate the causal effect of {treatment} on {outcome}.
+
+A good instrumental variable:
+1. Affects the treatment variable
+2. Only affects the outcome through the treatment
+3. Is not affected by any confounders of the treatment-outcome relationship
+
+For example, in an education study:
+- Distance to high-quality schools could be an IV for school quality
+- It affects which school a student attends
+- It likely only affects job prospects through its effect on school quality
+- It's typically not related to other factors affecting job success
+
+Format your response as a list of IVs with explanations and validity scores:
+[
+    ["distance_to_schools", "affects school choice but not directly related to job outcomes", 0.85],
+    ["local_education_policy", "influences school quality but not directly linked to employment", 0.75]
+]
+
+Your response:"""
+
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a causal inference expert helping to identify instrumental variables."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=200
+        )
+        
+        try:
+            suggestion = response.choices[0].message.content.strip()
+            suggestion = suggestion.replace("'", '"')
+            
+            import re
+            list_pattern = r'\[([\s\S]*)\]'
+            match = re.search(list_pattern, suggestion)
+            if match:
+                suggestion = f"[{match.group(1)}]"
+            
+            try:
+                ivs = json.loads(suggestion)
+            except json.JSONDecodeError:
+                import ast
+                ivs = ast.literal_eval(suggestion)
+            
+            return ivs if ivs else None
+            
+        except Exception as e:
+            st.error(f"Error parsing IV suggestion: {str(e)}")
+            return None
+            
+    except Exception as e:
+        st.error(f"Error suggesting IVs: {str(e)}")
+        return None
+
+def format_mediator_output(mediators):
+    """Format mediators into readable text with visualization."""
+    if not mediators:
+        return st.markdown("_No mediator variables identified._")
+    
+    try:
+        # Create visualization
+        dot = graphviz.Digraph()
+        dot.attr(rankdir='LR')
+        
+        # Node styles
+        dot.attr('node',
+            shape='rect',
+            style='rounded,filled',
+            fillcolor='white',
+            fontname='Arial',
+            margin='0.3,0.2'
+        )
+        
+        # Edge styles
+        dot.attr('edge',
+            color='#1E88E5',
+            penwidth='2'
+        )
+        
+        # Add treatment and outcome nodes
+        treatment = st.session_state.treatment_input
+        outcome = st.session_state.outcome_input
+        dot.node(treatment, treatment)
+        dot.node(outcome, outcome)
+        
+        # Add mediator nodes and edges
+        for med in mediators:
+            if isinstance(med, (list, tuple)) and len(med) >= 2:
+                mediator = str(med[0]).strip()
+                explanation = str(med[1]).strip()
+                confidence = float(med[2]) if len(med) > 2 else 0.5
+                
+                # Add mediator node
+                dot.node(mediator, mediator)
+                
+                # Add edges
+                dot.edge(treatment, mediator)
+                dot.edge(mediator, outcome)
+                
+                # Format confidence level
+                if confidence > 0.7:
+                    confidence_level = "high"
+                    confidence_color = "#27ae60"
+                elif confidence > 0.4:
+                    confidence_level = "medium"
+                    confidence_color = "#f39c12"
+                else:
+                    confidence_level = "low"
+                    confidence_color = "#e74c3c"
+                
+                # Display mediator information
+                with st.expander(f"🔄 {mediator} (Mediator)", expanded=True):
+                    st.markdown(f"""
+                        <div style='color: {confidence_color}; font-weight: bold; margin-bottom: 10px;'>
+                            Confidence Level: {confidence_level.title()}
+                            <br>
+                            Mediation Strength: {confidence:.2f}
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown(f"**Role:** {explanation}")
+                    st.markdown("""
+                        **Mediation Path:**
+                        1. Treatment → Mediator
+                        2. Mediator → Outcome
+                    """)
+        
+        # Display the visualization
+        st.graphviz_chart(dot)
+        
+        # Add explanation
+        with st.expander("🔍 Understanding Mediation", expanded=True):
+            st.markdown("""
+            ### What are Mediator Variables?
+            Mediator variables help explain *how* or *why* the treatment affects the outcome:
+            1. They are affected by the treatment
+            2. They in turn affect the outcome
+            3. They represent the mechanism of the causal effect
+            
+            ### How to Use Mediators
+            - Include them in path analysis
+            - Test for indirect effects
+            - Consider them in intervention design
+            - Use them to understand causal mechanisms
+            """)
+        
+    except Exception as e:
+        st.error(f"Error formatting mediators: {str(e)}")
+        return None
+
+def format_iv_output(ivs):
+    """Format instrumental variables into readable text with visualization."""
+    if not ivs:
+        return st.markdown("_No instrumental variables identified._")
+    
+    try:
+        # Create visualization
+        dot = graphviz.Digraph()
+        dot.attr(rankdir='LR')
+        
+        # Node styles
+        dot.attr('node',
+            shape='rect',
+            style='rounded,filled',
+            fillcolor='white',
+            fontname='Arial',
+            margin='0.3,0.2'
+        )
+        
+        # Edge styles
+        dot.attr('edge',
+            color='#1E88E5',
+            penwidth='2'
+        )
+        
+        # Add treatment and outcome nodes
+        treatment = st.session_state.treatment_input
+        outcome = st.session_state.outcome_input
+        dot.node(treatment, treatment)
+        dot.node(outcome, outcome)
+        
+        # Add IV nodes and edges
+        for iv in ivs:
+            if isinstance(iv, (list, tuple)) and len(iv) >= 2:
+                iv_name = str(iv[0]).strip()
+                explanation = str(iv[1]).strip()
+                validity = float(iv[2]) if len(iv) > 2 else 0.5
+                
+                # Add IV node
+                dot.node(iv_name, iv_name)
+                
+                # Add edge (only to treatment)
+                dot.edge(iv_name, treatment)
+                
+                # Format validity level
+                if validity > 0.7:
+                    validity_level = "high"
+                    validity_color = "#27ae60"
+                elif validity > 0.4:
+                    validity_level = "medium"
+                    validity_color = "#f39c12"
+                else:
+                    validity_level = "low"
+                    validity_color = "#e74c3c"
+                
+                # Display IV information
+                with st.expander(f"🎯 {iv_name} (Instrumental Variable)", expanded=True):
+                    st.markdown(f"""
+                        <div style='color: {validity_color}; font-weight: bold; margin-bottom: 10px;'>
+                            Validity Level: {validity_level.title()}
+                            <br>
+                            Instrument Strength: {validity:.2f}
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown(f"**Justification:** {explanation}")
+                    st.markdown("""
+                        **IV Assumptions:**
+                        1. ✓ Affects treatment
+                        2. ✓ No direct effect on outcome
+                        3. ✓ Independent of confounders
+                    """)
+        
+        # Display the visualization
+        st.graphviz_chart(dot)
+        
+        # Add explanation
+        with st.expander("🔍 Understanding Instrumental Variables", expanded=True):
+            st.markdown("""
+            ### What are Instrumental Variables?
+            IVs help estimate causal effects when there are unmeasured confounders:
+            1. They influence the treatment
+            2. They only affect the outcome through the treatment
+            3. They are independent of confounders
+            
+            ### How to Use IVs
+            - Use them in IV regression
+            - Test instrument strength
+            - Validate exclusion restriction
+            - Consider multiple instruments if available
+            """)
+        
+    except Exception as e:
+        st.error(f"Error formatting IVs: {str(e)}")
+        return None
+
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 
@@ -1431,22 +1764,44 @@ else:
                     st.warning("Please enter all required variables (factors, treatment, and outcome).")
 
             if st.button("Suggest Mediator Set"):
-                if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
-                    suggested_mediators = identifier.suggest_mediators(treatment, outcome, all_factors, st.session_state.domain_expertises)
-                    st.subheader("Suggested Mediator Set:")
-                    formatted_mediators = format_relationship_output(convert_tuples_to_lists(suggested_mediators))
-                    st.markdown(formatted_mediators)
+                if all_factors and treatment and outcome:
+                    if not openai_api_key:
+                        st.error("Please set your OpenAI API key in the environment variables.")
+                    else:
+                        with st.spinner("Analyzing variables to identify mediators..."):
+                            try:
+                                suggested_mediators = suggest_mediator_from_factors(
+                                    treatment, outcome, all_factors, openai_api_key
+                                )
+                                if suggested_mediators:
+                                    st.success("Successfully identified mediator variables!")
+                                    format_mediator_output(suggested_mediators)
+                                else:
+                                    st.warning("No clear mediator variables could be identified. Please check your input variables.")
+                            except Exception as e:
+                                st.error(f"Error during mediator suggestion: {str(e)}")
                 else:
-                    st.warning("Please ensure treatment, outcome, factors, and domain expertises are provided.")
+                    st.warning("Please enter all required variables (factors, treatment, and outcome).")
 
             if st.button("Suggest Instrumental Variables (IVs)"):
-                if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
-                    suggested_iv = identifier.suggest_ivs(treatment, outcome, all_factors, st.session_state.domain_expertises)
-                    st.subheader("Suggested Instrumental Variables (IVs):")
-                    formatted_iv = format_variables(convert_tuples_to_lists(suggested_iv))
-                    st.markdown(formatted_iv)
+                if all_factors and treatment and outcome:
+                    if not openai_api_key:
+                        st.error("Please set your OpenAI API key in the environment variables.")
+                    else:
+                        with st.spinner("Analyzing variables to identify instrumental variables..."):
+                            try:
+                                suggested_ivs = suggest_iv_from_factors(
+                                    treatment, outcome, all_factors, openai_api_key
+                                )
+                                if suggested_ivs:
+                                    st.success("Successfully identified instrumental variables!")
+                                    format_iv_output(suggested_ivs)
+                                else:
+                                    st.warning("No clear instrumental variables could be identified. Please check your input variables.")
+                            except Exception as e:
+                                st.error(f"Error during IV suggestion: {str(e)}")
                 else:
-                    st.warning("Please ensure treatment, outcome, factors, and domain expertises are provided.")
+                    st.warning("Please enter all required variables (factors, treatment, and outcome).")
 
         elif analysis_type == "Validation Suggestion":
             st.markdown("""
