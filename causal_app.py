@@ -346,7 +346,7 @@ def convert_tuples_to_lists(obj):
 def format_confounder_output(confounders):
     """Format confounders into human-readable text with explanations."""
     if not confounders:
-        return "_No confounding variables identified._"
+        return st.markdown("_No confounding variables identified._")
     
     def format_variable_name(name):
         """Format variable names consistently."""
@@ -357,89 +357,59 @@ def format_confounder_output(confounders):
         source = format_variable_name(source)
         target = format_variable_name(target)
         
-        output = f'''
-            <div class="output-item">
-                <h4>{source} → {target}</h4>
-        '''
+        st.markdown(f"### {source} → {target}")
         
         if score:
             confidence = "High" if score > 0.7 else "Medium" if score > 0.4 else "Low"
-            confidence_class = f"confidence-{confidence.lower()}"
-            output += f'''
-                <div class="{confidence_class}">
+            confidence_color = "#27ae60" if confidence == "High" else "#f39c12" if confidence == "Medium" else "#e74c3c"
+            
+            st.markdown(f"""
+                <div style='color: {confidence_color}; font-weight: bold; margin-bottom: 10px;'>
                     Confidence Level: {confidence}
                     <br>
                     Relationship Strength: {score:.2f}
                 </div>
-                <div class="explanation-box">
-                    <p>💡 {source} shows a {confidence.lower()} likelihood of being a confounder.</p>
-                </div>
-            '''
+            """, unsafe_allow_html=True)
+            
+            st.markdown(f"💡 {source} shows a {confidence.lower()} likelihood of being a confounder.")
         else:
-            output += f'''
-                <div class="explanation-box">
-                    <p>💡 {source} may act as a confounder through its relationship with {target}.</p>
-                </div>
-            '''
-        
-        output += '</div>'
-        return output
+            st.markdown(f"💡 {source} may act as a confounder through its relationship with {target}.")
     
-    output = '<div class="output-section">'
-    output += '<h3 class="section-title">Identified Confounding Variables</h3>'
+    st.markdown("## Identified Confounding Variables")
     
     if isinstance(confounders, (list, tuple)):
         for item in confounders:
             if isinstance(item, (list, tuple)):
                 if len(item) >= 2:
-                    output += format_relationship(item[0], item[1], item[2] if len(item) > 2 else None)
+                    format_relationship(item[0], item[1], item[2] if len(item) > 2 else None)
             else:
                 var_name = format_variable_name(item)
-                output += f'''
-                    <div class="output-item">
-                        <h4>{var_name}</h4>
-                        <div class="explanation-box">
-                            <p>💡 This variable may confound the relationship between treatment and outcome.</p>
-                        </div>
-                    </div>
-                '''
+                st.markdown(f"### {var_name}")
+                st.markdown(f"💡 This variable may confound the relationship between treatment and outcome.")
     
-    # Add explanation section with improved formatting
-    output += '''
-        <div class="explanation-section">
-            <h4 class="section-subtitle">🔍 Understanding Confounding Variables</h4>
-            <div class="explanation-list">
-                <ol>
-                    <li>Confounders can create spurious associations between variables</li>
-                    <li>They affect both the treatment and outcome variables</li>
-                    <li>Controlling for confounders is crucial for accurate causal inference</li>
-                </ol>
-            </div>
-        </div>
-        
-        <div class="recommendation-section">
-            <h4 class="section-subtitle">📊 Recommendations</h4>
-            <div class="recommendation-list">
-                <ol>
-                    <li>Include these variables in your data collection plan</li>
-                    <li>Use appropriate statistical methods to control for their effects</li>
-                    <li>Consider stratification or matching based on these variables</li>
-                    <li>Document any unmeasured confounders that might affect your analysis</li>
-                </ol>
-            </div>
-        </div>
-    '''
+    # Add explanation section
+    st.markdown("### 🔍 Understanding Confounding Variables")
+    st.markdown("""
+    1. Confounders can create spurious associations between variables
+    2. They affect both the treatment and outcome variables
+    3. Controlling for confounders is crucial for accurate causal inference
+    """)
     
-    output += '</div>'
-    return output
+    # Add recommendations
+    st.markdown("### 📊 Recommendations")
+    st.markdown("""
+    1. Include these variables in your data collection plan
+    2. Use appropriate statistical methods to control for their effects
+    3. Consider stratification or matching based on these variables
+    4. Document any unmeasured confounders that might affect your analysis
+    """)
 
 def format_relationship_output(relationships):
     """Format relationships into readable text with explanations."""
     if not relationships:
-        return "_No relationships identified._"
+        return st.markdown("_No relationships identified._")
     
-    output = '<div class="output-section">'
-    output += '<h3 class="section-title">Identified Causal Relationships</h3>'
+    st.markdown("## Identified Causal Relationships")
     
     if isinstance(relationships, (list, tuple)):
         for rel in relationships:
@@ -453,43 +423,34 @@ def format_relationship_output(relationships):
                     confidence_score = rel[2]
                     confidence = 'high' if confidence_score > 0.7 else 'medium' if confidence_score > 0.4 else 'low'
                 
-                output += f'''
-                    <div class="output-item">
-                        <h4>{source} → {target}</h4>
-                        <div class="confidence-{confidence}">
-                            Confidence Level: {confidence.title()}
-                            {f"<br>Relationship Strength: {confidence_score:.2f}" if confidence_score is not None else ""}
-                        </div>
-                        <div class="recommendation-box">
-                            <p><strong>Recommendation:</strong> {get_relationship_recommendation(confidence)}</p>
-                        </div>
+                confidence_color = "#27ae60" if confidence == "high" else "#f39c12" if confidence == "medium" else "#e74c3c"
+                
+                st.markdown(f"### {source} → {target}")
+                st.markdown(f"""
+                    <div style='color: {confidence_color}; font-weight: bold; margin-bottom: 10px;'>
+                        Confidence Level: {confidence.title()}
+                        {f"<br>Relationship Strength: {confidence_score:.2f}" if confidence_score is not None else ""}
                     </div>
-                '''
+                """, unsafe_allow_html=True)
+                
+                st.markdown(f"**Recommendation:** {get_relationship_recommendation(confidence)}")
     
-    # Add explanation section with improved formatting
-    output += '''
-        <div class="explanation-section">
-            <h4 class="section-subtitle">🔍 Understanding These Relationships</h4>
-            <ol>
-                <li>Strong relationships suggest direct causal effects</li>
-                <li>Medium relationships may indicate indirect effects</li>
-                <li>Low confidence relationships need further investigation</li>
-            </ol>
-        </div>
-        
-        <div class="recommendation-section">
-            <h4 class="section-subtitle">📊 Next Steps</h4>
-            <ol>
-                <li>Focus on strong relationships for primary analysis</li>
-                <li>Consider indirect effects in your model</li>
-                <li>Validate relationships with domain experts</li>
-                <li>Look for potential mediating variables</li>
-            </ol>
-        </div>
-    '''
+    # Add explanation section
+    st.markdown("### 🔍 Understanding These Relationships")
+    st.markdown("""
+    1. Strong relationships suggest direct causal effects
+    2. Medium relationships may indicate indirect effects
+    3. Low confidence relationships need further investigation
+    """)
     
-    output += '</div>'
-    return output
+    # Add next steps
+    st.markdown("### 📊 Next Steps")
+    st.markdown("""
+    1. Focus on strong relationships for primary analysis
+    2. Consider indirect effects in your model
+    3. Validate relationships with domain experts
+    4. Look for potential mediating variables
+    """)
 
 def get_relationship_recommendation(confidence):
     """Generate recommendations based on confidence level"""
@@ -531,76 +492,45 @@ def format_domain_expertises(expertises):
 def format_critiques(critiques):
     """Format critiques into readable text with explanations."""
     if not critiques:
-        return "_No critiques found._"
+        return st.markdown("_No critiques found._")
     
     def format_single_critique(critique):
         return str(critique).replace('_', ' ').title()
     
-    output = '<div class="output-section">'
-    output += '<h3 class="section-title">Analysis Critiques</h3>'
+    st.markdown("## Analysis Critiques")
     
     if isinstance(critiques, dict):
         for category, items in critiques.items():
-            output += f'<h4 class="section-subtitle">{str(category).replace("_", " ").title()}</h4>'
+            st.markdown(f"### {str(category).replace('_', ' ').title()}")
             
             if isinstance(items, list):
-                output += '<div class="critique-list">'
                 for item in items:
-                    output += f'''
-                        <div class="output-item">
-                            <h4>{format_single_critique(item)}</h4>
-                            <div class="explanation-box">
-                                <p>💡 {generate_critique_explanation(category, item)}</p>
-                            </div>
-                        </div>
-                    '''
-                output += '</div>'
+                    st.markdown(f"#### {format_single_critique(item)}")
+                    st.markdown(f"💡 {generate_critique_explanation(category, item)}")
             else:
-                output += f'''
-                    <div class="output-item">
-                        <h4>{format_single_critique(items)}</h4>
-                        <div class="explanation-box">
-                            <p>💡 {generate_critique_explanation(category, items)}</p>
-                        </div>
-                    </div>
-                '''
+                st.markdown(f"#### {format_single_critique(items)}")
+                st.markdown(f"💡 {generate_critique_explanation(category, items)}")
     elif isinstance(critiques, list):
-        output += '<div class="critique-list">'
         for critique in critiques:
-            output += f'''
-                <div class="output-item">
-                    <h4>{format_single_critique(critique)}</h4>
-                    <div class="explanation-box">
-                        <p>💡 {generate_critique_explanation("general", critique)}</p>
-                    </div>
-                </div>
-            '''
-        output += '</div>'
+            st.markdown(f"#### {format_single_critique(critique)}")
+            st.markdown(f"💡 {generate_critique_explanation('general', critique)}")
     
-    # Add explanation section with improved formatting
-    output += '''
-        <div class="explanation-section">
-            <h4 class="section-subtitle">🔍 Understanding These Critiques</h4>
-            <ol>
-                <li>Each critique points to potential improvements in your causal model</li>
-                <li>Address high-priority critiques first to strengthen your analysis</li>
-                <li>Consider the practical feasibility of implementing suggested changes</li>
-            </ol>
-        </div>
-        
-        <div class="recommendation-section">
-            <h4 class="section-subtitle">📊 Next Steps</h4>
-            <ol>
-                <li>Review each critique and assess its impact on your analysis</li>
-                <li>Prioritize changes based on feasibility and importance</li>
-                <li>Document any limitations that cannot be addressed</li>
-                <li>Update your model iteratively as you address each point</li>
-            </ol>
-        </div>
-    '''
+    # Add explanation section
+    st.markdown("### 🔍 Understanding These Critiques")
+    st.markdown("""
+    1. Each critique points to potential improvements in your causal model
+    2. Address high-priority critiques first to strengthen your analysis
+    3. Consider the practical feasibility of implementing suggested changes
+    """)
     
-    output += '</div>'
-    return output
+    # Add next steps
+    st.markdown("### 📊 Next Steps")
+    st.markdown("""
+    1. Review each critique and assess its impact on your analysis
+    2. Prioritize changes based on feasibility and importance
+    3. Document any limitations that cannot be addressed
+    4. Update your model iteratively as you address each point
+    """)
 
 def generate_critique_explanation(category, critique):
     """Generate human-readable explanations for critiques."""
@@ -619,12 +549,11 @@ def generate_critique_explanation(category, critique):
         return "Consider this point to improve your causal analysis."
 
 def format_variables(variables):
-    """Format the confounding variables output with HTML/CSS styling"""
+    """Format the variables output with proper styling"""
     if not variables:
-        return "_No variables identified._"
-        
-    output = '<div class="output-section">'
-    output += '<h3 class="section-title">Identified Variables</h3>'
+        return st.markdown("_No variables identified._")
+    
+    st.markdown("## Identified Variables")
     
     for var in variables:
         confidence = var.get('confidence', 'medium').lower()
@@ -632,35 +561,27 @@ def format_variables(variables):
         impact = var.get('impact', '')
         recommendation = var.get('recommendation', '')
         
-        output += f'''
-            <div class="output-item">
-                <h4>{name}</h4>
-                <div class="confidence-{confidence}">
-                    Confidence Level: {confidence.title()}
-                </div>
-                <div class="explanation-box">
-                    <p><strong>Impact:</strong> {impact}</p>
-                </div>
-                <div class="recommendation-box">
-                    <p><strong>Recommendation:</strong> {recommendation}</p>
-                </div>
+        confidence_color = "#27ae60" if confidence == "high" else "#f39c12" if confidence == "medium" else "#e74c3c"
+        
+        st.markdown(f"### {name}")
+        st.markdown(f"""
+            <div style='color: {confidence_color}; font-weight: bold; margin-bottom: 10px;'>
+                Confidence Level: {confidence.title()}
             </div>
-        '''
+        """, unsafe_allow_html=True)
+        
+        if impact:
+            st.markdown(f"**Impact:** {impact}")
+        if recommendation:
+            st.markdown(f"**Recommendation:** {recommendation}")
     
     # Add explanation section
-    output += '''
-        <div class="explanation-section">
-            <h4 class="section-subtitle">🔍 Understanding Variable Impacts</h4>
-            <ol>
-                <li>High confidence variables should be prioritized in your analysis</li>
-                <li>Consider both direct and indirect effects of each variable</li>
-                <li>Pay attention to variables with strong theoretical support</li>
-            </ol>
-        </div>
-    '''
-    
-    output += '</div>'
-    return output
+    st.markdown("### 🔍 Understanding Variable Impacts")
+    st.markdown("""
+    1. High confidence variables should be prioritized in your analysis
+    2. Consider both direct and indirect effects of each variable
+    3. Pay attention to variables with strong theoretical support
+    """)
 
 def validate_dag_input(dag_str):
     """Validate DAG input and return tuple of (is_valid, dag_dict, error_message)."""
