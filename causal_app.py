@@ -599,46 +599,70 @@ def format_relationship_output(relationships):
     
     st.markdown("## Identified Causal Relationships")
     
-    if isinstance(relationships, (list, tuple)):
+    try:
         for rel in relationships:
             if isinstance(rel, (list, tuple)) and len(rel) >= 2:
                 source = str(rel[0]).strip("'[]{}").strip()
                 target = str(rel[1]).strip("'[]{}").strip()
-                confidence = 'medium'
-                confidence_score = None
+                confidence_score = float(rel[2]) if len(rel) > 2 else 0.5
                 
-                if len(rel) >= 3 and isinstance(rel[2], (int, float)):
-                    confidence_score = rel[2]
-                    confidence = 'high' if confidence_score > 0.7 else 'medium' if confidence_score > 0.4 else 'low'
+                # Determine confidence level based on score
+                if confidence_score > 0.7:
+                    confidence = "high"
+                    confidence_color = "#27ae60"
+                elif confidence_score > 0.4:
+                    confidence = "medium"
+                    confidence_color = "#f39c12"
+                else:
+                    confidence = "low"
+                    confidence_color = "#e74c3c"
                 
-                confidence_color = "#27ae60" if confidence == "high" else "#f39c12" if confidence == "medium" else "#e74c3c"
-                
-                st.markdown(f"### {source} affects {target}")
+                st.markdown(f"### {source} → {target}")
                 st.markdown(f"""
                     <div style='color: {confidence_color}; font-weight: bold; margin-bottom: 10px;'>
                         Confidence Level: {confidence.title()}
-                        {f"<br>Relationship Strength: {confidence_score:.2f}" if confidence_score is not None else ""}
+                        <br>
+                        Relationship Strength: {confidence_score:.2f}
                     </div>
                 """, unsafe_allow_html=True)
                 
-                st.markdown(f"**Recommendation:** {get_relationship_recommendation(confidence)}")
-    
-    # Add explanation section
-    st.markdown("### 🔍 Understanding These Relationships")
-    st.markdown("""
-    1. Strong relationships suggest direct causal effects
-    2. Medium relationships may indicate indirect effects
-    3. Low confidence relationships need further investigation
-    """)
-    
-    # Add next steps
-    st.markdown("### 📊 Next Steps")
-    st.markdown("""
-    1. Focus on strong relationships for primary analysis
-    2. Consider indirect effects in your model
-    3. Validate relationships with domain experts
-    4. Look for potential mediating variables
-    """)
+                # Add relationship explanation
+                explanation = get_relationship_explanation(source, target, confidence)
+                st.markdown(f"**Analysis:** {explanation}")
+                
+                # Add recommendation
+                recommendation = get_relationship_recommendation(confidence)
+                st.markdown(f"**Recommendation:** {recommendation}")
+        
+        # Add explanation section
+        st.markdown("### 🔍 Understanding These Relationships")
+        st.markdown("""
+        1. Strong relationships (confidence > 0.7) suggest direct causal effects
+        2. Medium relationships (confidence 0.4-0.7) may indicate indirect effects
+        3. Low confidence relationships (< 0.4) need further investigation
+        """)
+        
+        # Add next steps
+        st.markdown("### 📊 Next Steps")
+        st.markdown("""
+        1. Focus on high-confidence relationships for primary analysis
+        2. Consider indirect effects through medium-confidence paths
+        3. Validate relationships with domain experts
+        4. Look for potential mediating variables
+        """)
+        
+    except Exception as e:
+        st.error(f"Error formatting relationships: {str(e)}")
+        return None
+
+def get_relationship_explanation(source, target, confidence):
+    """Generate explanations for relationships based on confidence level"""
+    if confidence == 'high':
+        return f"Strong evidence suggests that changes in {source} directly affect {target}."
+    elif confidence == 'medium':
+        return f"There appears to be a moderate relationship between {source} and {target}, possibly involving other factors."
+    else:
+        return f"The relationship between {source} and {target} requires further investigation to establish causality."
 
 def get_relationship_recommendation(confidence):
     """Generate recommendations based on confidence level"""
@@ -857,10 +881,10 @@ def suggest_relationships_from_factors(treatment, outcome, factors, openai_api_k
 Please identify potential causal relationships between these variables.
 Consider direct and indirect effects, and provide confidence levels.
 
-Format your response as a list of relationships with confidence scores (0-1) like this:
+Format your response as a list of tuples with source, target, and confidence (0-1) like this:
 [
-    {{"source": "var1", "target": "var2", "confidence": 0.8}},
-    {{"source": "var2", "target": "var3", "confidence": 0.6}}
+    ["var1", "var2", 0.8],
+    ["var2", "var3", 0.6]
 ]
 
 Your response:"""
@@ -878,10 +902,27 @@ Your response:"""
         # Parse the response
         try:
             suggestion = response.choices[0].message.content.strip()
-            relationships = json.loads(suggestion)
-            return relationships
-        except json.JSONDecodeError:
-            st.error("Error parsing the relationships suggestion. Please try again.")
+            # Try parsing as JSON first
+            try:
+                relationships = json.loads(suggestion)
+            except json.JSONDecodeError:
+                # If JSON parsing fails, try evaluating as Python literal
+                import ast
+                relationships = ast.literal_eval(suggestion)
+            
+            # Validate and format relationships
+            formatted_relationships = []
+            if isinstance(relationships, list):
+                for rel in relationships:
+                    if isinstance(rel, (list, tuple)) and len(rel) >= 2:
+                        # If confidence is not provided, default to 0.5
+                        confidence = rel[2] if len(rel) > 2 else 0.5
+                        formatted_relationships.append([str(rel[0]), str(rel[1]), float(confidence)])
+            
+            return formatted_relationships if formatted_relationships else None
+            
+        except Exception as e:
+            st.error(f"Error parsing relationships: {str(e)}")
             return None
             
     except Exception as e:
@@ -1058,10 +1099,17 @@ else:
                                 )
                                 if suggested_relationships:
                                     st.subheader("Suggested Pair-wise Relationships (Potential DAG Edges)")
+                                    st.success("Successfully identified relationships between variables!")
                                     formatted_relationships = format_relationship_output(suggested_relationships)
-                                    st.markdown(formatted_relationships)
+                                    if formatted_relationships:
+                                        st.markdown(formatted_relationships)
+                                    else:
+                                        st.warning("No clear relationships were identified. Try adjusting your input variables or adding more context.")
+                                else:
+                                    st.warning("No relationships could be identified. Please check your input variables and try again.")
                             except Exception as e:
-                                st.error(f"Error during relationship suggestion: {str(e)}")
+                                st.error(f"An error occurred while analyzing relationships: {str(e)}")
+                                st.info("Try simplifying your input or checking for any special characters in variable names.")
                 else:
                     st.warning("Please enter all required variables (factors, treatment, and outcome).")
 
