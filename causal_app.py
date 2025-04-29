@@ -1995,128 +1995,329 @@ else:
             <h3>✅ Validation Suggestion Step</h3>
             Validate and improve your causal model:
             <ol>
-                <li>Validate your DAG structure</li>
-                <li>Identify potential latent confounders</li>
-                <li>Find suitable negative controls</li>
+                <li>Review and edit the automatically generated DAG</li>
+                <li>Get comprehensive model validation</li>
+                <li>Identify potential improvements</li>
             </ol>
             </div>
             """, unsafe_allow_html=True)
             
-            validator = ValidationSuggester(llm_model)
-
-            # Example DAG for the current factors
-            example_dag = {
-                "smoking": ["lung cancer"],
-                "air pollution exposure": ["lung cancer"],
-                "exercise habits": ["lung cancer"]
-            }
+            # Update the DAG interface with the new user-friendly version
+            update_dag_interface()
             
-            st.markdown("""
-            ### 📊 DAG Input Guide
-            Enter your DAG structure using either format:
-            """)
-
-            # Create two columns for the format examples
-            format_col1, format_col2 = st.columns(2)
+            # Add validation buttons in a row
+            col1, col2 = st.columns(2)
             
-            with format_col1:
+            with col1:
+                if st.button("🔍 Validate Model"):
+                    if 'current_dag' in st.session_state:
+                        with st.spinner("Analyzing your causal model..."):
+                            validation_results = validate_causal_model(
+                                st.session_state.treatment_input,
+                                st.session_state.outcome_input,
+                                [f.strip() for f in st.session_state.factors_input.split(',') if f.strip()],
+                                st.session_state.current_dag
+                            )
+                            if validation_results:
+                                display_validation_results(validation_results)
+                            else:
+                                st.warning("Could not validate the model. Please check your inputs and try again.")
+                    else:
+                        st.warning("Please define your DAG structure first.")
+            
+            with col2:
+                if st.button("📋 Show Validation Guide"):
+                    st.markdown("""
+                    ### 📚 Validation Guide
+                    
+                    #### What We Check
+                    1. **DAG Structure**
+                       - Missing relationships
+                       - Questionable relationships
+                       - Causal direction plausibility
+                    
+                    2. **Confounding**
+                       - Unmeasured confounders
+                       - Control variables
+                       - Backdoor paths
+                    
+                    3. **Assumptions**
+                       - Temporal ordering
+                       - No unmeasured confounding
+                       - Causal sufficiency
+                    
+                    #### How to Use Results
+                    1. Review all identified issues
+                    2. Prioritize critical problems
+                    3. Document assumptions
+                    4. Update your model iteratively
+                    """)
+            
+            # Add help text
+            with st.expander("❓ Need Help?"):
                 st.markdown("""
-                **1. JSON Format:**
-                ```json
-                {
-                    "source": ["target1", "target2"],
-                    "source2": ["target3"]
-                }
-                ```
-                """)
-            
-            with format_col2:
-                st.markdown("""
-                **2. Python Dict Format:**
-                ```python
-                {
-                    'source': ['target1', 'target2'],
-                    'source2': ['target3']
-                }
-                ```
+                **Common Questions:**
+                
+                1. **What is a DAG?**
+                   - A Directed Acyclic Graph showing causal relationships
+                   - Arrows indicate direction of causation
+                   - No cycles allowed (A→B→A is invalid)
+                
+                2. **What are negative controls?**
+                   - Variables that should not be affected by your treatment
+                   - Help validate your causal assumptions
+                   - Example: Past values of outcome variable
+                
+                3. **What are latent confounders?**
+                   - Unmeasured variables affecting both treatment and outcome
+                   - Can bias your causal estimates
+                   - Important to identify and control for if possible
                 """)
 
-            st.markdown("### 💡 Example for Current Factors:")
-            st.code(json.dumps(example_dag, indent=2), language='json')
+def generate_dag_from_inputs(treatment, outcome, factors):
+    """Automatically generate DAG structure from input variables."""
+    if not treatment or not outcome or not factors:
+        return None
+        
+    # Clean inputs
+    treatment = treatment.strip()
+    outcome = outcome.strip()
+    factors = [f.strip() for f in factors if f.strip()]
+    
+    # Remove treatment and outcome from factors if present
+    factors = [f for f in factors if f not in [treatment, outcome]]
+    
+    try:
+        # Create initial DAG with direct treatment -> outcome relationship
+        dag = {
+            treatment: [outcome]
+        }
+        
+        # Add relationships from factors to outcome
+        # We'll assume factors can affect the outcome
+        for factor in factors:
+            if factor not in dag:
+                dag[factor] = [outcome]
+            else:
+                if outcome not in dag[factor]:
+                    dag[factor].append(outcome)
+        
+        # Add potential relationships between factors and treatment
+        for factor in factors:
+            # Some factors might affect the treatment
+            if factor not in dag:
+                dag[factor] = [treatment]
+            else:
+                if treatment not in dag[factor]:
+                    dag[factor].append(treatment)
+        
+        return dag
+        
+    except Exception as e:
+        st.error(f"Error generating DAG structure: {str(e)}")
+        return None
 
-            dag_str = st.text_area(
-                "Enter the DAG structure:",
-                value=json.dumps(example_dag, indent=2),
-                help="Enter the DAG structure as a JSON or Python dictionary",
-                height=200
-            )
-
-            is_valid, suggested_dag, error_msg = validate_dag_input(dag_str)
+def update_dag_interface():
+    """Update the DAG input interface to be more user-friendly."""
+    st.markdown("""
+    ### 📊 DAG Structure
+    The Directed Acyclic Graph (DAG) shows how variables influence each other in your causal model.
+    """)
+    
+    # Auto-generate DAG from inputs
+    treatment = st.session_state.get('treatment_input', '')
+    outcome = st.session_state.get('outcome_input', '')
+    factors_str = st.session_state.get('factors_input', '')
+    factors = [f.strip() for f in factors_str.split(',') if f.strip()] if factors_str else []
+    
+    initial_dag = generate_dag_from_inputs(treatment, outcome, factors)
+    
+    if initial_dag:
+        st.markdown("#### 🔄 Auto-generated DAG Structure")
+        st.markdown("This is an initial suggestion based on your inputs. You can modify it below.")
+        
+        # Show the auto-generated DAG
+        st.json(initial_dag)
+        
+        # Create a more user-friendly interface for editing relationships
+        st.markdown("#### ✏️ Edit Relationships")
+        st.markdown("Select which variables influence each other:")
+        
+        # Get all unique variables
+        all_vars = list(set([treatment, outcome] + factors))
+        
+        # Create a matrix of checkboxes for relationships
+        modified_dag = {}
+        for source in all_vars:
+            st.markdown(f"**From {source} to:**")
+            cols = st.columns(len(all_vars))
+            modified_dag[source] = []
             
-            if error_msg.startswith("❌"):
-                st.error(error_msg)
-            elif error_msg.startswith("✅"):
-                st.success(error_msg)
-                st.markdown("### Current DAG Structure:")
-                
-                # Display relationships in a more readable format
-                relationships = []
-                for source, targets in suggested_dag.items():
-                    for target in targets:
-                        relationships.append(f"• {source} ➜ {target}")
-                
-                for rel in relationships:
-                    st.markdown(rel)
+            for i, target in enumerate(all_vars):
+                if source != target:  # No self-loops
+                    with cols[i]:
+                        # Check if this relationship exists in the initial DAG
+                        initial_exists = target in initial_dag.get(source, [])
+                        if st.checkbox(target, value=initial_exists, key=f"rel_{source}_{target}"):
+                            modified_dag[source].append(target)
+        
+        # Update the DAG structure
+        if modified_dag:
+            # Remove empty lists to keep the DAG clean
+            modified_dag = {k: v for k, v in modified_dag.items() if v}
+            st.session_state['current_dag'] = modified_dag
+            
+            # Visualize the modified DAG
+            st.markdown("#### 🎯 Current DAG Structure")
+            relationships = []
+            for source, targets in modified_dag.items():
+                for target in targets:
+                    relationships.append([source, target, 0.7])  # Default confidence
+            
+            if relationships:
+                dot = create_dag_visualization(relationships)
+                if dot:
+                    st.graphviz_chart(dot)
+    else:
+        st.warning("Please enter treatment, outcome, and factors to generate the DAG structure.")
 
-                # Create a row for all buttons
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    critique_clicked = st.button("🔍 Critique DAG")
-                with col2:
-                    confounders_clicked = st.button("🔍 Find Latent Confounders")
-                with col3:
-                    controls_clicked = st.button("🔍 Find Negative Controls")
-                
-                # Create a container for results below all buttons
-                results_container = st.container()
-                
-                with results_container:
-                    if critique_clicked:
-                        if all_factors and suggested_dag and st.session_state.domain_expertises is not None:
-                            suggested_critiques_dag = validator.critique_graph(
-                                all_factors, suggested_dag, st.session_state.domain_expertises, RelationshipStrategy.Pairwise
-                            )
-                            st.markdown("### 📋 DAG Structure Critique")
-                            formatted_critiques = format_critiques(convert_tuples_to_lists(suggested_critiques_dag))
-                            st.markdown(formatted_critiques)
-                        else:
-                            st.warning("Please ensure factors, DAG, and domain expertises are provided.")
+def validate_causal_model(treatment, outcome, factors, dag_structure):
+    """Validate the causal model and provide comprehensive feedback."""
+    if not treatment or not outcome or not factors or not dag_structure:
+        return None
+    
+    try:
+        client = get_openai_client()
+        if not client:
+            return None
 
-                    if confounders_clicked:
-                        if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
-                            suggested_latent_confounders = validator.suggest_latent_confounders(
-                                treatment, outcome, all_factors, st.session_state.domain_expertises
-                            )
-                            st.markdown("### 🎯 Potential Latent Confounders")
-                            formatted_confounders = format_variables(convert_tuples_to_lists(suggested_latent_confounders))
-                            st.markdown(formatted_confounders)
-                            
-                            # Add explanation for latent confounders
-                            st.info("💡 Latent confounders are unmeasured variables that might affect both treatment and outcome. Consider if you can measure these variables or account for them in your analysis.")
-                        else:
-                            st.warning("Please ensure treatment, outcome, factors, and domain expertises are provided.")
+        # Create a structured prompt for validation
+        prompt = f"""Given a causal model with:
+Treatment: {treatment}
+Outcome: {outcome}
+Factors: {', '.join(factors)}
+DAG Structure: {json.dumps(dag_structure, indent=2)}
 
-                    if controls_clicked:
-                        if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
-                            suggested_negative_controls = validator.suggest_negative_controls(
-                                treatment, outcome, all_factors, st.session_state.domain_expertises
-                            )
-                            st.markdown("### 🎯 Suggested Negative Controls")
-                            formatted_controls = format_variables(convert_tuples_to_lists(suggested_negative_controls))
-                            st.markdown(formatted_controls)
-                            
-                            # Add explanation for negative controls
-                            st.info("💡 Negative controls help validate your causal assumptions. They are variables that should not be affected by your treatment or should not affect your outcome.")
-                        else:
-                            st.warning("Please ensure treatment, outcome, factors, and domain expertises are provided.")
+Please provide a comprehensive validation of this causal model. Consider:
+
+1. DAG Structure:
+   - Are there any missing important relationships?
+   - Are there any questionable or unlikely relationships?
+   - Is the direction of causality plausible?
+
+2. Confounding:
+   - Identify potential unmeasured confounders
+   - Suggest variables that should be controlled for
+
+3. Model Assumptions:
+   - Temporal ordering (causes precede effects)
+   - No unmeasured confounding
+   - Causal sufficiency
+
+Format your response as a JSON object with these sections:
+{
+    "critiques": {
+        "missing_relationships": ["list of missing important relationships"],
+        "questionable_relationships": ["list of relationships that need review"],
+        "assumption_violations": ["list of violated assumptions"]
+    },
+    "latent_confounders": [
+        ["confounder name", "explanation", confidence_score]
+    ],
+    "negative_controls": [
+        ["control variable", "justification", confidence_score]
+    ]
+}
+
+Ensure each section provides specific, actionable feedback."""
+
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a causal inference expert providing detailed model validation."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=500
+        )
+        
+        try:
+            validation = json.loads(response.choices[0].message.content.strip())
+            return validation
+        except json.JSONDecodeError as e:
+            st.error(f"Error parsing validation response: {str(e)}")
+            return None
+            
+    except Exception as e:
+        st.error(f"Error during model validation: {str(e)}")
+        return None
+
+def display_validation_results(validation_results):
+    """Display validation results in a user-friendly format."""
+    if not validation_results:
+        st.warning("No validation results available.")
+        return
+    
+    try:
+        # Display critiques
+        st.markdown("### 🔍 Model Critiques")
+        critiques = validation_results.get("critiques", {})
+        
+        # Missing relationships
+        if missing := critiques.get("missing_relationships"):
+            st.markdown("#### Missing Relationships")
+            for rel in missing:
+                st.markdown(f"- 🔗 {rel}")
+        
+        # Questionable relationships
+        if questionable := critiques.get("questionable_relationships"):
+            st.markdown("#### Relationships to Review")
+            for rel in questionable:
+                st.markdown(f"- ⚠️ {rel}")
+        
+        # Assumption violations
+        if violations := critiques.get("assumption_violations"):
+            st.markdown("#### Assumption Violations")
+            for violation in violations:
+                st.markdown(f"- ❌ {violation}")
+        
+        # Display latent confounders
+        if confounders := validation_results.get("latent_confounders"):
+            st.markdown("### 🎯 Potential Latent Confounders")
+            for confounder in confounders:
+                if len(confounder) >= 3:
+                    name, explanation, confidence = confounder
+                    confidence_color = "#27ae60" if confidence > 0.7 else "#f39c12" if confidence > 0.4 else "#e74c3c"
+                    st.markdown(f"""
+                        <div style='margin: 10px 0; padding: 10px; border-left: 4px solid {confidence_color};'>
+                            <strong>{name}</strong> (Confidence: {confidence:.2f})<br>
+                            {explanation}
+                        </div>
+                    """, unsafe_allow_html=True)
+        
+        # Display negative controls
+        if controls := validation_results.get("negative_controls"):
+            st.markdown("### 🎯 Suggested Negative Controls")
+            for control in controls:
+                if len(control) >= 3:
+                    name, justification, confidence = control
+                    confidence_color = "#27ae60" if confidence > 0.7 else "#f39c12" if confidence > 0.4 else "#e74c3c"
+                    st.markdown(f"""
+                        <div style='margin: 10px 0; padding: 10px; border-left: 4px solid {confidence_color};'>
+                            <strong>{name}</strong> (Confidence: {confidence:.2f})<br>
+                            {justification}
+                        </div>
+                    """, unsafe_allow_html=True)
+        
+        # Add recommendations
+        st.markdown("### 📋 Recommendations")
+        st.markdown("""
+        1. Review and address the identified missing relationships
+        2. Carefully consider the questionable relationships
+        3. Plan how to measure or control for latent confounders
+        4. Consider including suggested negative controls in your analysis
+        5. Document any assumptions and limitations
+        """)
+        
+    except Exception as e:
+        st.error(f"Error displaying validation results: {str(e)}")
