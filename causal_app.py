@@ -84,16 +84,23 @@ st.markdown("""
     }
     .step-box {
         background-color: #F5F5F5;
-        padding: 15px;
+        padding: 20px;
         border-left: 4px solid #1E88E5;
         margin: 10px 0;
     }
-    .step-box ol {
-        margin: 0;
-        padding-left: 20px;
+    .step-item {
+        background-color: white;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-    .step-box li {
-        margin: 10px 0;
+    .step-item p {
+        margin: 0;
+        padding: 0;
+    }
+    .step-item strong {
+        color: #1E88E5;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -420,10 +427,25 @@ else:
     with st.expander("📚 How to Use PyWhy-LLM", expanded=True):
         st.markdown("""
         <div class="step-box">
-        1. 🎯 Select your analysis step from the sidebar
-        2. 🔄 Enter your variables and factors in the input fields
-        3. 📊 Follow the step-by-step process for your chosen analysis
-        4. 📋 Review and interpret the results
+        <div class="step-item">
+            <p><strong>1. 🎯 Select your analysis step from the sidebar</strong></p>
+            Choose the appropriate analysis type for your causal inference needs
+        </div>
+        
+        <div class="step-item">
+            <p><strong>2. 🔄 Enter your variables and factors in the input fields</strong></p>
+            Provide all relevant variables and relationships for analysis
+        </div>
+        
+        <div class="step-item">
+            <p><strong>3. 📊 Follow the step-by-step process for your chosen analysis</strong></p>
+            Complete each step as guided by the interface
+        </div>
+        
+        <div class="step-item">
+            <p><strong>4. 📋 Review and interpret the results</strong></p>
+            Analyze the output and insights provided by the system
+        </div>
         </div>
         """, unsafe_allow_html=True)
 
