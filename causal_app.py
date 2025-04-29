@@ -166,30 +166,30 @@ def validate_dag_input(dag_str):
         # First try to parse as JSON
         dag_dict = json.loads(dag_str)
         if not isinstance(dag_dict, dict):
-            return False, {}, "Input must be a dictionary/object."
+            return False, {}, "❌ Input must be a dictionary/object."
         
         # Validate structure
         for source, targets in dag_dict.items():
             if not isinstance(source, str):
-                return False, {}, f"Key '{source}' must be a string."
+                return False, {}, f"❌ Key '{source}' must be a string."
             if not isinstance(targets, list):
                 if isinstance(targets, str):
                     # Convert single string to list
                     dag_dict[source] = [targets]
                 else:
-                    return False, {}, f"Value for '{source}' must be a list of strings or a single string."
+                    return False, {}, f"❌ Value for '{source}' must be a list of strings or a single string."
             else:
                 for target in targets:
                     if not isinstance(target, str):
-                        return False, {}, f"Target '{target}' in list for '{source}' must be a string."
+                        return False, {}, f"❌ Target '{target}' in list for '{source}' must be a string."
         
-        return True, dag_dict, ""
+        return True, dag_dict, "✅ Valid DAG structure"
     except json.JSONDecodeError:
         try:
             # Try to evaluate as Python dict if JSON fails
             dag_dict = eval(dag_str)
             if not isinstance(dag_dict, dict):
-                return False, {}, "Input must be a dictionary."
+                return False, {}, "❌ Input must be a dictionary."
             
             # Convert to proper format
             formatted_dict = {}
@@ -199,11 +199,11 @@ def validate_dag_input(dag_str):
                 elif isinstance(targets, (list, tuple)):
                     formatted_dict[source] = list(targets)
                 else:
-                    return False, {}, f"Value for '{source}' must be a list of strings or a single string."
+                    return False, {}, f"❌ Value for '{source}' must be a list of strings or a single string."
             
-            return True, formatted_dict, ""
+            return True, formatted_dict, "✅ Valid DAG structure"
         except:
-            return False, {}, "Invalid input format. Please use valid JSON or Python dictionary format."
+            return False, {}, "❌ Invalid input format. Please use valid JSON or Python dictionary format."
 
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -407,64 +407,102 @@ else:
             }
             
             st.markdown("""
-            ### DAG Input Guide
+            ### 📊 DAG Input Guide
             Enter your DAG structure using either format:
-            1. JSON: `{"source": ["target1", "target2"], ...}`
-            2. Python dict: `{'source': ['target1', 'target2'], ...}`
-            
-            Example for current factors:
-            ```python
-            {
-                "smoking": ["lung cancer"],
-                "air pollution exposure": ["lung cancer"],
-                "exercise habits": ["lung cancer"]
-            }
-            ```
             """)
 
+            # Create two columns for the format examples
+            format_col1, format_col2 = st.columns(2)
+            
+            with format_col1:
+                st.markdown("""
+                **1. JSON Format:**
+                ```json
+                {
+                    "source": ["target1", "target2"],
+                    "source2": ["target3"]
+                }
+                ```
+                """)
+            
+            with format_col2:
+                st.markdown("""
+                **2. Python Dict Format:**
+                ```python
+                {
+                    'source': ['target1', 'target2'],
+                    'source2': ['target3']
+                }
+                ```
+                """)
+
+            st.markdown("### 💡 Example for Current Factors:")
+            st.code(json.dumps(example_dag, indent=2), language='json')
+
             dag_str = st.text_area(
-                "Enter the suggested DAG edges:",
-                "{}"
+                "Enter the DAG structure:",
+                value=json.dumps(example_dag, indent=2),
+                help="Enter the DAG structure as a JSON or Python dictionary",
+                height=200
             )
 
             is_valid, suggested_dag, error_msg = validate_dag_input(dag_str)
-            if not is_valid:
+            
+            if error_msg.startswith("❌"):
                 st.error(error_msg)
-            elif suggested_dag:  # If valid and not empty
-                st.success("Valid DAG structure")
+            elif error_msg.startswith("✅"):
+                st.success(error_msg)
                 st.markdown("### Current DAG Structure:")
-                formatted_dag = format_relationship_output(suggested_dag)
-                st.markdown(formatted_dag)
+                
+                # Display relationships in a more readable format
+                relationships = []
+                for source, targets in suggested_dag.items():
+                    for target in targets:
+                        relationships.append(f"• {source} ➜ {target}")
+                
+                for rel in relationships:
+                    st.markdown(rel)
 
-            if st.button("Critique the DAG Edges"):
-                if all_factors and suggested_dag and st.session_state.domain_expertises is not None:
-                    suggested_critiques_dag = validator.critique_graph(
-                        all_factors, suggested_dag, st.session_state.domain_expertises, RelationshipStrategy.Pairwise
-                    )
-                    st.subheader("Critique of the DAG Edges:")
-                    formatted_critiques = format_critiques(convert_tuples_to_lists(suggested_critiques_dag))
-                    st.markdown(formatted_critiques)
-                else:
-                    st.warning("Please ensure factors, DAG, and domain expertises are provided.")
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    if st.button("🔍 Critique DAG"):
+                        if all_factors and suggested_dag and st.session_state.domain_expertises is not None:
+                            suggested_critiques_dag = validator.critique_graph(
+                                all_factors, suggested_dag, st.session_state.domain_expertises, RelationshipStrategy.Pairwise
+                            )
+                            st.subheader("📋 DAG Structure Critique:")
+                            formatted_critiques = format_critiques(convert_tuples_to_lists(suggested_critiques_dag))
+                            st.markdown(formatted_critiques)
+                        else:
+                            st.warning("Please ensure factors, DAG, and domain expertises are provided.")
 
-            if st.button("Suggest Latent Confounders"):
-                if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
-                    suggested_latent_confounders = validator.suggest_latent_confounders(
-                        treatment, outcome, all_factors, st.session_state.domain_expertises
-                    )
-                    st.subheader("Suggested Latent Confounders:")
-                    formatted_confounders = format_variables(convert_tuples_to_lists(suggested_latent_confounders))
-                    st.markdown(formatted_confounders)
-                else:
-                    st.warning("Please ensure treatment, outcome, factors, and domain expertises are provided.")
+                with col2:
+                    if st.button("🔍 Find Latent Confounders"):
+                        if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
+                            suggested_latent_confounders = validator.suggest_latent_confounders(
+                                treatment, outcome, all_factors, st.session_state.domain_expertises
+                            )
+                            st.subheader("🎯 Suggested Latent Confounders:")
+                            formatted_confounders = format_variables(convert_tuples_to_lists(suggested_latent_confounders))
+                            st.markdown(formatted_confounders)
+                            
+                            # Add explanation for latent confounders
+                            st.info("💡 Latent confounders are unmeasured variables that might affect both treatment and outcome. Consider if you can measure these variables or account for them in your analysis.")
+                        else:
+                            st.warning("Please ensure treatment, outcome, factors, and domain expertises are provided.")
 
-            if st.button("Suggest Negative Controls"):
-                if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
-                    suggested_negative_controls = validator.suggest_negative_controls(
-                        treatment, outcome, all_factors, st.session_state.domain_expertises
-                    )
-                    st.subheader("Suggested Negative Controls:")
-                    formatted_controls = format_variables(convert_tuples_to_lists(suggested_negative_controls))
-                    st.markdown(formatted_controls)
-                else:
-                    st.warning("Please ensure treatment, outcome, factors, and domain expertises are provided.")
+                with col3:
+                    if st.button("🔍 Find Negative Controls"):
+                        if treatment and outcome and all_factors and st.session_state.domain_expertises is not None:
+                            suggested_negative_controls = validator.suggest_negative_controls(
+                                treatment, outcome, all_factors, st.session_state.domain_expertises
+                            )
+                            st.subheader("🎯 Suggested Negative Controls:")
+                            formatted_controls = format_variables(convert_tuples_to_lists(suggested_negative_controls))
+                            st.markdown(formatted_controls)
+                            
+                            # Add explanation for negative controls
+                            st.info("💡 Negative controls help validate your causal assumptions. They are variables that should not be affected by your treatment or should not affect your outcome.")
+                        else:
+                            st.warning("Please ensure treatment, outcome, factors, and domain expertises are provided.")
