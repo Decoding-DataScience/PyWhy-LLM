@@ -69,33 +69,44 @@ def convert_tuples_to_lists(obj):
         return obj
 
 def format_relationship_output(relationships):
-    """Format relationships into readable text."""
+    """Format relationships into readable text with explanations."""
     if not relationships:
         return "_No relationships found._"
     
     def format_single_item(item):
-        """Helper function to format a single relationship item."""
         return str(item).replace('_', ' ').title()
     
     formatted_output = []
     for rel in relationships:
         if isinstance(rel, (list, tuple)) and len(rel) >= 2:
-            # Format relationship scores with better readability
             if len(rel) == 3 and isinstance(rel[2], (int, float)):
-                formatted_output.append(f"• {format_single_item(rel[0])} affects {format_single_item(rel[1])} (confidence: {rel[2]:.2f})")
+                formatted_output.extend([
+                    f"• {format_single_item(rel[0])} affects {format_single_item(rel[1])}",
+                    f"  Confidence Score: {rel[2]:.2f}",
+                    f"  💡 This relationship suggests that changes in {format_single_item(rel[0]).lower()} may lead to changes in {format_single_item(rel[1]).lower()}.",
+                    ""  # Add blank line
+                ])
             else:
-                formatted_output.append(f"• {format_single_item(rel[0])} affects {format_single_item(rel[1])}")
+                formatted_output.extend([
+                    f"• {format_single_item(rel[0])} affects {format_single_item(rel[1])}",
+                    f"  💡 This indicates a potential causal link from {format_single_item(rel[0]).lower()} to {format_single_item(rel[1]).lower()}.",
+                    ""  # Add blank line
+                ])
         elif isinstance(rel, dict):
-            # Handle dictionary format with improved readability
             for source, targets in rel.items():
                 if isinstance(targets, (list, tuple)):
                     for target in targets:
-                        formatted_output.append(f"• {format_single_item(source)} influences {format_single_item(target)}")
+                        formatted_output.extend([
+                            f"• {format_single_item(source)} influences {format_single_item(target)}",
+                            f"  💡 This suggests that {format_single_item(source).lower()} may have an effect on {format_single_item(target).lower()}.",
+                            ""  # Add blank line
+                        ])
                 else:
-                    formatted_output.append(f"• {format_single_item(source)} influences {format_single_item(targets)}")
-        else:
-            # Improved formatting for other formats
-            formatted_output.append(f"• Relationship: {format_single_item(rel)}")
+                    formatted_output.extend([
+                        f"• {format_single_item(source)} influences {format_single_item(targets)}",
+                        f"  💡 This indicates a potential relationship where {format_single_item(source).lower()} affects {format_single_item(targets).lower()}.",
+                        ""  # Add blank line
+                    ])
     
     return "\n".join(formatted_output)
 
@@ -120,31 +131,65 @@ def format_domain_expertises(expertises):
         return str(expertises)
 
 def format_critiques(critiques):
-    """Format critiques into readable text."""
+    """Format critiques into readable text with explanations."""
     if not critiques:
         return "_No critiques found._"
     
     def format_single_critique(critique):
-        """Helper function to format a single critique."""
         return str(critique).replace('_', ' ').title()
     
     if isinstance(critiques, dict):
         formatted_output = []
         for category, items in critiques.items():
             formatted_output.append(f"### {str(category).replace('_', ' ').title()}")
+            formatted_output.append("")  # Add spacing after category
+            
             if isinstance(items, list):
-                formatted_output.extend([f"• {format_single_critique(item)}" for item in items])
+                for item in items:
+                    formatted_output.extend([
+                        f"• {format_single_critique(item)}",
+                        f"  💡 {generate_critique_explanation(category, item)}",
+                        ""  # Add blank line
+                    ])
             else:
-                formatted_output.append(f"• {format_single_critique(items)}")
-            formatted_output.append("")  # Add spacing between categories
+                formatted_output.extend([
+                    f"• {format_single_critique(items)}",
+                    f"  💡 {generate_critique_explanation(category, items)}",
+                    ""  # Add blank line
+                ])
+            
+            formatted_output.append("")  # Add extra spacing between categories
         return "\n".join(formatted_output)
     elif isinstance(critiques, list):
-        return "\n".join([f"• {format_single_critique(critique)}" for critique in critiques])
+        formatted_output = []
+        for critique in critiques:
+            formatted_output.extend([
+                f"• {format_single_critique(critique)}",
+                f"  💡 {generate_critique_explanation('general', critique)}",
+                ""  # Add blank line
+            ])
+        return "\n".join(formatted_output)
     else:
-        return f"• {format_single_critique(critiques)}"
+        return f"• {format_single_critique(critiques)}\n  💡 {generate_critique_explanation('general', critiques)}"
+
+def generate_critique_explanation(category, critique):
+    """Generate human-readable explanations for critiques."""
+    category = category.lower()
+    critique = str(critique).lower()
+    
+    if 'missing' in category or 'missing' in critique:
+        return "Consider adding this element to make your causal model more complete."
+    elif 'invalid' in category or 'invalid' in critique:
+        return "This relationship may need to be reconsidered or removed from your model."
+    elif 'suggestion' in category:
+        return "This is a recommended addition to improve your causal model."
+    elif 'warning' in category:
+        return "Pay attention to this aspect as it might affect the validity of your analysis."
+    else:
+        return "Consider this point to improve your causal analysis."
 
 def format_variables(variables):
-    """Format variables into readable text."""
+    """Format variables into readable text with explanations."""
     if not variables:
         return "_No variables identified._"
     
@@ -155,32 +200,66 @@ def format_variables(variables):
         return str(var).replace('_', ' ').title()
     
     if isinstance(variables, list):
-        # Handle list of variables or tuples
         formatted_vars = []
         for var in variables:
             if isinstance(var, (list, tuple)):
-                # Handle relationship tuples with scores
                 if len(var) == 3 and isinstance(var[2], (int, float)):
-                    formatted_vars.append(f"• {format_single_var(var[0])} ➜ {format_single_var(var[1])} (confidence: {var[2]:.2f})")
+                    formatted_vars.append({
+                        "relationship": f"• {format_single_var(var[0])} affects {format_single_var(var[1])}",
+                        "confidence": f"  Confidence Score: {var[2]:.2f}",
+                        "explanation": f"  💡 This indicates a potential causal relationship where {format_single_var(var[0]).lower()} may influence {format_single_var(var[1]).lower()}."
+                    })
                 elif len(var) == 2:
-                    formatted_vars.append(f"• {format_single_var(var[0])} ➜ {format_single_var(var[1])}")
+                    formatted_vars.append({
+                        "relationship": f"• {format_single_var(var[0])} affects {format_single_var(var[1])}",
+                        "explanation": f"  💡 This suggests a direct relationship between {format_single_var(var[0]).lower()} and {format_single_var(var[1]).lower()}."
+                    })
                 else:
-                    formatted_vars.append(f"• {', '.join(map(format_single_var, var))}")
+                    formatted_vars.append({
+                        "relationship": f"• {', '.join(map(format_single_var, var))}",
+                        "explanation": "  💡 These variables are related in the causal model."
+                    })
             else:
-                formatted_vars.append(f"• {format_single_var(var)}")
-        return "\n".join(formatted_vars)
+                formatted_vars.append({
+                    "variable": f"• {format_single_var(var)}",
+                    "explanation": f"  💡 This is a key variable in your causal analysis."
+                })
+        
+        # Format the output with each item on a new line
+        output = []
+        for item in formatted_vars:
+            if "relationship" in item:
+                output.append(item["relationship"])
+                if "confidence" in item:
+                    output.append(item["confidence"])
+                output.append(item["explanation"])
+            else:
+                output.append(item["variable"])
+                output.append(item["explanation"])
+            output.append("")  # Add blank line between items
+        
+        return "\n".join(output)
+    
     elif isinstance(variables, dict):
         formatted_output = []
         for category, vars in variables.items():
             formatted_output.append(f"### {str(category).replace('_', ' ').title()}")
+            formatted_output.append("")  # Add spacing after category header
+            
             if isinstance(vars, (list, tuple)):
-                formatted_output.extend([f"• {format_single_var(var)}" for var in vars])
+                for var in vars:
+                    formatted_output.append(f"• {format_single_var(var)}")
+                    formatted_output.append(f"  💡 This is a relevant factor in the {category.lower()} category.")
+                    formatted_output.append("")  # Add spacing between items
             else:
                 formatted_output.append(f"• {format_single_var(vars)}")
-            formatted_output.append("")  # Add spacing between categories
+                formatted_output.append(f"  💡 This is a key factor in the {category.lower()} category.")
+                formatted_output.append("")
+            
+            formatted_output.append("")  # Add extra spacing between categories
         return "\n".join(formatted_output)
     else:
-        return f"• {format_single_var(variables)}"
+        return f"• {format_single_var(variables)}\n  💡 This is an important factor in your analysis."
 
 def validate_dag_input(dag_str):
     """Validate DAG input and return tuple of (is_valid, dag_dict, error_message)."""
