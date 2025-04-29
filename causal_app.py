@@ -370,76 +370,92 @@ def format_confounder_output(confounders):
         source = format_variable_name(source)
         target = format_variable_name(target)
         
-        formatted_output = [f"#### {source} ↔ {target}"]
+        output = f'''
+            <div class="output-item">
+                <div class="variable-name">{source} → {target}</div>
+        '''
+        
         if score:
             confidence = "High" if score > 0.7 else "Medium" if score > 0.4 else "Low"
-            formatted_output.extend([
-                f"• Relationship Strength: {score:.2f}",
-                f"• Confidence Level: {confidence}",
-                f"💡 {source} shows a {confidence.lower()} likelihood of being a confounder.",
-            ])
+            confidence_class = f"{confidence.lower()}-confidence"
+            output += f'''
+                <div class="confidence-level {confidence_class}">
+                    Confidence: {confidence}
+                </div>
+                <div class="explanation-box">
+                    <div>Relationship Strength: {score:.2f}</div>
+                    <div>💡 {source} shows a {confidence.lower()} likelihood of being a confounder.</div>
+                </div>
+            '''
         else:
-            formatted_output.append(f"💡 {source} may act as a confounder through its relationship with {target}.")
-        return formatted_output
+            output += f'''
+                <div class="explanation-box">
+                    <div>💡 {source} may act as a confounder through its relationship with {target}.</div>
+                </div>
+            '''
+        
+        output += '</div>'
+        return output
     
-    formatted_output = []
-    formatted_output.append("### Identified Confounding Variables")
-    formatted_output.append("")
+    output = '<div class="output-section">'
+    output += '<div class="section-title">Identified Confounding Variables</div>'
     
     if isinstance(confounders, (list, tuple)):
         for item in confounders:
             if isinstance(item, (list, tuple)):
                 if len(item) >= 2:
-                    # Handle relationship tuples
-                    if len(item) == 3 and isinstance(item[2], (int, float)):
-                        formatted_output.extend(format_relationship(item[0], item[1], item[2]))
-                    else:
-                        formatted_output.extend(format_relationship(item[0], item[1]))
-                    formatted_output.append("")
+                    output += format_relationship(item[0], item[1], item[2] if len(item) > 2 else None)
             else:
                 # Handle single variables
                 var_name = format_variable_name(item)
-                formatted_output.extend([
-                    f"#### {var_name}",
-                    "💡 This variable may confound the relationship between treatment and outcome.",
-                    ""
-                ])
+                output += f'''
+                    <div class="output-item">
+                        <div class="variable-name">{var_name}</div>
+                        <div class="explanation-box">
+                            <div>💡 This variable may confound the relationship between treatment and outcome.</div>
+                        </div>
+                    </div>
+                '''
     
     # Add detailed explanation section
-    formatted_output.extend([
-        "#### 🔍 Understanding Confounding Variables",
-        "",
-        "• Confounders can create spurious associations between variables",
-        "• They affect both the treatment and outcome variables",
-        "• Controlling for confounders is crucial for accurate causal inference",
-        "",
-        "#### 📊 Recommendations",
-        "",
-        "1. Include these variables in your data collection plan",
-        "2. Use appropriate statistical methods to control for their effects",
-        "3. Consider stratification or matching based on these variables",
-        "4. Document any unmeasured confounders that might affect your analysis",
-        ""
-    ])
+    output += '''
+        <div class="explanation-section">
+            <div class="section-subtitle">🔍 Understanding Confounding Variables</div>
+            <div class="explanation-list">
+                <div class="explanation-item">• Confounders can create spurious associations between variables</div>
+                <div class="explanation-item">• They affect both the treatment and outcome variables</div>
+                <div class="explanation-item">• Controlling for confounders is crucial for accurate causal inference</div>
+            </div>
+        </div>
+        
+        <div class="recommendation-section">
+            <div class="section-subtitle">📊 Recommendations</div>
+            <div class="recommendation-list">
+                <div class="recommendation-item">1. Include these variables in your data collection plan</div>
+                <div class="recommendation-item">2. Use appropriate statistical methods to control for their effects</div>
+                <div class="recommendation-item">3. Consider stratification or matching based on these variables</div>
+                <div class="recommendation-item">4. Document any unmeasured confounders that might affect your analysis</div>
+            </div>
+        </div>
+    '''
     
-    return "\n".join(formatted_output)
+    output += '</div>'
+    return output
 
 def format_relationship_output(relationships):
-    """Format the causal relationships output with HTML/CSS styling"""
+    """Format relationships into readable text with explanations."""
     if not relationships:
         return "_No relationships identified._"
     
     output = '<div class="output-section">'
     output += '<div class="section-title">Identified Causal Relationships</div>'
     
-    # Handle both dictionary and tuple/list formats
     if isinstance(relationships, (list, tuple)):
         for rel in relationships:
             if isinstance(rel, (list, tuple)) and len(rel) >= 2:
-                # Handle tuple format (source, target, confidence_score)
                 source = str(rel[0]).replace('_', ' ').title()
                 target = str(rel[1]).replace('_', ' ').title()
-                confidence = 'medium'  # Default confidence
+                confidence = 'medium'
                 confidence_score = None
                 
                 if len(rel) >= 3 and isinstance(rel[2], (int, float)):
@@ -452,50 +468,45 @@ def format_relationship_output(relationships):
                             Confidence: {confidence.title()}
                         </div>
                         <div class="relationship">
-                            <span class="cause">{source}</span>
-                            <span class="arrow">→</span>
-                            <span class="effect">{target}</span>
+                            {source} → {target}
                         </div>
                 '''
                 
                 if confidence_score is not None:
                     output += f'''
                         <div class="explanation-box">
-                            <strong>Relationship Strength:</strong> {confidence_score:.2f}
+                            <div><strong>Relationship Strength:</strong> {confidence_score:.2f}</div>
                         </div>
                     '''
                 
                 output += f'''
                         <div class="recommendation-box">
-                            <strong>Recommendation:</strong> {get_relationship_recommendation(confidence)}
+                            <div><strong>Recommendation:</strong> {get_relationship_recommendation(confidence)}</div>
                         </div>
                     </div>
                 '''
-    else:
-        # Handle dictionary format
-        for rel in relationships:
-            confidence = rel.get('confidence', 'medium').lower()
-            cause = str(rel.get('cause', '')).replace('_', ' ').title()
-            effect = str(rel.get('effect', '')).replace('_', ' ').title()
-            
-            output += f'''
-                <div class="output-item">
-                    <div class="confidence-level {confidence}-confidence">
-                        Confidence: {confidence.title()}
-                    </div>
-                    <div class="relationship">
-                        <span class="cause">{cause}</span>
-                        <span class="arrow">→</span>
-                        <span class="effect">{effect}</span>
-                    </div>
-                    <div class="explanation-box">
-                        <strong>Explanation:</strong> {rel.get('explanation', 'Potential causal relationship identified.')}
-                    </div>
-                    <div class="recommendation-box">
-                        <strong>Recommendation:</strong> {rel.get('recommendation', get_relationship_recommendation(confidence))}
-                    </div>
-                </div>
-            '''
+    
+    # Add explanation section
+    output += '''
+        <div class="explanation-section">
+            <div class="section-subtitle">🔍 Understanding These Relationships</div>
+            <div class="explanation-list">
+                <div class="explanation-item">• Strong relationships suggest direct causal effects</div>
+                <div class="explanation-item">• Medium relationships may indicate indirect effects</div>
+                <div class="explanation-item">• Low confidence relationships need further investigation</div>
+            </div>
+        </div>
+        
+        <div class="recommendation-section">
+            <div class="section-subtitle">📊 Next Steps</div>
+            <div class="recommendation-list">
+                <div class="recommendation-item">1. Focus on strong relationships for primary analysis</div>
+                <div class="recommendation-item">2. Consider indirect effects in your model</div>
+                <div class="recommendation-item">3. Validate relationships with domain experts</div>
+                <div class="recommendation-item">4. Look for potential mediating variables</div>
+            </div>
+        </div>
+    '''
     
     output += '</div>'
     return output
