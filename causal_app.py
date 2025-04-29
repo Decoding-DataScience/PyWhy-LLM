@@ -73,25 +73,29 @@ def format_relationship_output(relationships):
     if not relationships:
         return "_No relationships found._"
     
+    def format_single_item(item):
+        """Helper function to format a single relationship item."""
+        return str(item).replace('_', ' ').title()
+    
     formatted_output = []
     for rel in relationships:
         if isinstance(rel, (list, tuple)) and len(rel) >= 2:
             # Format relationship scores with better readability
             if len(rel) == 3 and isinstance(rel[2], (int, float)):
-                formatted_output.append(f"• {rel[0]} affects {rel[1]} (confidence score: {rel[2]:.2f})")
+                formatted_output.append(f"• {format_single_item(rel[0])} affects {format_single_item(rel[1])} (confidence: {rel[2]:.2f})")
             else:
-                formatted_output.append(f"• {rel[0]} affects {rel[1]}")
+                formatted_output.append(f"• {format_single_item(rel[0])} affects {format_single_item(rel[1])}")
         elif isinstance(rel, dict):
             # Handle dictionary format with improved readability
             for source, targets in rel.items():
-                if isinstance(targets, list):
+                if isinstance(targets, (list, tuple)):
                     for target in targets:
-                        formatted_output.append(f"• {source} influences {target}")
+                        formatted_output.append(f"• {format_single_item(source)} influences {format_single_item(target)}")
                 else:
-                    formatted_output.append(f"• {source} influences {targets}")
+                    formatted_output.append(f"• {format_single_item(source)} influences {format_single_item(targets)}")
         else:
             # Improved formatting for other formats
-            formatted_output.append(f"• Relationship: {rel}")
+            formatted_output.append(f"• Relationship: {format_single_item(rel)}")
     
     return "\n".join(formatted_output)
 
@@ -120,42 +124,63 @@ def format_critiques(critiques):
     if not critiques:
         return "_No critiques found._"
     
+    def format_single_critique(critique):
+        """Helper function to format a single critique."""
+        return str(critique).replace('_', ' ').title()
+    
     if isinstance(critiques, dict):
         formatted_output = []
         for category, items in critiques.items():
-            formatted_output.append(f"### {category}")
+            formatted_output.append(f"### {str(category).replace('_', ' ').title()}")
             if isinstance(items, list):
-                formatted_output.extend([f"- {item}" for item in items])
+                formatted_output.extend([f"• {format_single_critique(item)}" for item in items])
             else:
-                formatted_output.append(f"- {items}")
-            formatted_output.append("")  # Add blank line between categories
+                formatted_output.append(f"• {format_single_critique(items)}")
+            formatted_output.append("")  # Add spacing between categories
         return "\n".join(formatted_output)
     elif isinstance(critiques, list):
-        return "\n".join([f"- {critique}" for critique in critiques])
+        return "\n".join([f"• {format_single_critique(critique)}" for critique in critiques])
     else:
-        return str(critiques)
+        return f"• {format_single_critique(critiques)}"
 
 def format_variables(variables):
     """Format variables into readable text."""
     if not variables:
         return "_No variables identified._"
     
+    def format_single_var(var):
+        """Helper function to format a single variable."""
+        if isinstance(var, (list, tuple)):
+            return [str(v).replace('_', ' ').title() for v in var]
+        return str(var).replace('_', ' ').title()
+    
     if isinstance(variables, list):
-        # Add bullet points and better formatting for lists
-        return "\n".join([f"• {var.replace('_', ' ').title()}" for var in variables])
+        # Handle list of variables or tuples
+        formatted_vars = []
+        for var in variables:
+            if isinstance(var, (list, tuple)):
+                # Handle relationship tuples with scores
+                if len(var) == 3 and isinstance(var[2], (int, float)):
+                    formatted_vars.append(f"• {format_single_var(var[0])} ➜ {format_single_var(var[1])} (confidence: {var[2]:.2f})")
+                elif len(var) == 2:
+                    formatted_vars.append(f"• {format_single_var(var[0])} ➜ {format_single_var(var[1])}")
+                else:
+                    formatted_vars.append(f"• {', '.join(map(format_single_var, var))}")
+            else:
+                formatted_vars.append(f"• {format_single_var(var)}")
+        return "\n".join(formatted_vars)
     elif isinstance(variables, dict):
         formatted_output = []
         for category, vars in variables.items():
-            # Format category headers with better styling
-            formatted_output.append(f"### {category.replace('_', ' ').title()}")
-            if isinstance(vars, list):
-                formatted_output.extend([f"• {var.replace('_', ' ').title()}" for var in vars])
+            formatted_output.append(f"### {str(category).replace('_', ' ').title()}")
+            if isinstance(vars, (list, tuple)):
+                formatted_output.extend([f"• {format_single_var(var)}" for var in vars])
             else:
-                formatted_output.append(f"• {str(vars).replace('_', ' ').title()}")
-            formatted_output.append("")
+                formatted_output.append(f"• {format_single_var(vars)}")
+            formatted_output.append("")  # Add spacing between categories
         return "\n".join(formatted_output)
     else:
-        return f"• {str(variables).replace('_', ' ').title()}"
+        return f"• {format_single_var(variables)}"
 
 def validate_dag_input(dag_str):
     """Validate DAG input and return tuple of (is_valid, dag_dict, error_message)."""
