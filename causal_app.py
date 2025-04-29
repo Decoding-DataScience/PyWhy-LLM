@@ -1316,11 +1316,21 @@ Ensure your response is a valid JSON array and includes ONLY the array, no addit
 def suggest_iv_from_factors(treatment, outcome, factors, openai_api_key):
     """Use OpenAI to suggest instrumental variables."""
     if not factors or not treatment or not outcome:
+        st.warning("Missing required inputs: treatment, outcome, and factors are all required.")
         return None
     
     try:
         client = get_openai_client()
         if not client:
+            return None
+
+        # Clean and validate inputs
+        treatment = treatment.strip()
+        outcome = outcome.strip()
+        factors = [f.strip() for f in factors if f.strip()]
+        
+        if not treatment or not outcome or not factors:
+            st.warning("Invalid inputs: treatment, outcome, and factors cannot be empty.")
             return None
 
         prompt = f"""Given a causal analysis with:
@@ -1361,7 +1371,7 @@ Ensure your response is a valid JSON array and includes ONLY the array, no addit
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
-            max_tokens=200
+            max_tokens=300  # Increased max tokens for better response
         )
         
         try:
@@ -1370,13 +1380,17 @@ Ensure your response is a valid JSON array and includes ONLY the array, no addit
             # Clean up the response
             suggestion = suggestion.replace("'", '"')  # Replace single quotes with double quotes
             suggestion = suggestion.replace("\n", " ")  # Remove newlines
+            suggestion = suggestion.replace("\t", " ")  # Remove tabs
             
             # Extract just the array part if there's additional text
             import re
             array_pattern = r'\[(.*)\]'
             match = re.search(array_pattern, suggestion)
-            if match:
-                suggestion = f"[{match.group(1)}]"
+            if not match:
+                st.warning("Could not find a valid array in the response.")
+                return None
+                
+            suggestion = f"[{match.group(1)}]"
             
             try:
                 # Try parsing as JSON first
@@ -1387,17 +1401,29 @@ Ensure your response is a valid JSON array and includes ONLY the array, no addit
                     st.warning("Invalid response format. Expected a list of instrumental variables.")
                     return None
                 
+                # Clean and validate each IV
+                valid_ivs = []
                 for iv in ivs:
                     if not isinstance(iv, list) or len(iv) < 3:
-                        st.warning("Invalid IV format. Each IV should have a name, explanation, and score.")
-                        return None
+                        continue
+                        
+                    name = str(iv[0]).strip()
+                    explanation = str(iv[1]).strip()
                     
-                    # Ensure score is a float between 0 and 1
-                    iv[2] = float(iv[2])
-                    if not 0 <= iv[2] <= 1:
-                        iv[2] = max(0, min(1, iv[2]))  # Clamp between 0 and 1
+                    try:
+                        score = float(iv[2])
+                        score = max(0.0, min(1.0, score))  # Clamp between 0 and 1
+                    except (ValueError, TypeError):
+                        score = 0.5
+                    
+                    if name and explanation:  # Only include if we have at least a name and explanation
+                        valid_ivs.append([name, explanation, score])
                 
-                return ivs
+                if not valid_ivs:
+                    st.warning("No valid instrumental variables could be extracted from the response.")
+                    return None
+                    
+                return valid_ivs
                 
             except json.JSONDecodeError:
                 # If JSON fails, try Python literal evaluation
@@ -1410,17 +1436,30 @@ Ensure your response is a valid JSON array and includes ONLY the array, no addit
                         st.warning("Invalid response format. Expected a list of instrumental variables.")
                         return None
                     
+                    # Clean and validate each IV
+                    valid_ivs = []
                     for iv in ivs:
                         if not isinstance(iv, list) or len(iv) < 3:
-                            st.warning("Invalid IV format. Each IV should have a name, explanation, and score.")
-                            return None
+                            continue
+                            
+                        name = str(iv[0]).strip()
+                        explanation = str(iv[1]).strip()
                         
-                        # Ensure score is a float between 0 and 1
-                        iv[2] = float(iv[2])
-                        if not 0 <= iv[2] <= 1:
-                            iv[2] = max(0, min(1, iv[2]))  # Clamp between 0 and 1
+                        try:
+                            score = float(iv[2])
+                            score = max(0.0, min(1.0, score))  # Clamp between 0 and 1
+                        except (ValueError, TypeError):
+                            score = 0.5
+                        
+                        if name and explanation:  # Only include if we have at least a name and explanation
+                            valid_ivs.append([name, explanation, score])
                     
-                    return ivs
+                    if not valid_ivs:
+                        st.warning("No valid instrumental variables could be extracted from the response.")
+                        return None
+                        
+                    return valid_ivs
+                    
                 except:
                     st.warning("Could not parse the IV suggestions. Please try again.")
                     return None
@@ -1430,7 +1469,7 @@ Ensure your response is a valid JSON array and includes ONLY the array, no addit
             return None
             
     except Exception as e:
-        st.error(f"Error suggesting IVs: {str(e)}")
+        st.error(f"Error suggesting instrumental variables: {str(e)}")
         return None
 
 def format_mediator_output(mediators):
@@ -1535,6 +1574,11 @@ def format_iv_output(ivs):
         return st.markdown("_No instrumental variables identified._")
     
     try:
+        # Validate input structure
+        if not isinstance(ivs, list):
+            st.warning("Invalid IV data structure. Expected a list of instrumental variables.")
+            return None
+        
         # Create visualization
         dot = graphviz.Digraph()
         dot.attr(rankdir='LR')
@@ -1557,15 +1601,32 @@ def format_iv_output(ivs):
         # Add treatment and outcome nodes
         treatment = st.session_state.treatment_input
         outcome = st.session_state.outcome_input
+        if not treatment or not outcome:
+            st.warning("Treatment or outcome variable is missing.")
+            return None
+            
         dot.node(treatment, treatment)
         dot.node(outcome, outcome)
         
+        # Track if any valid IVs were processed
+        valid_ivs_found = False
+        
         # Add IV nodes and edges
         for iv in ivs:
-            if isinstance(iv, (list, tuple)) and len(iv) >= 2:
+            try:
+                if not isinstance(iv, (list, tuple)) or len(iv) < 2:
+                    continue
+                
                 iv_name = str(iv[0]).strip()
+                if not iv_name:
+                    continue
+                    
                 explanation = str(iv[1]).strip()
-                validity = float(iv[2]) if len(iv) > 2 else 0.5
+                try:
+                    validity = float(iv[2]) if len(iv) > 2 else 0.5
+                    validity = max(0.0, min(1.0, validity))  # Clamp between 0 and 1
+                except (ValueError, TypeError):
+                    validity = 0.5
                 
                 # Add IV node
                 dot.node(iv_name, iv_name)
@@ -1601,6 +1662,16 @@ def format_iv_output(ivs):
                         2. ✓ No direct effect on outcome
                         3. ✓ Independent of confounders
                     """)
+                
+                valid_ivs_found = True
+                
+            except Exception as e:
+                st.warning(f"Skipped invalid IV entry: {str(e)}")
+                continue
+        
+        if not valid_ivs_found:
+            st.warning("No valid instrumental variables could be processed. Please check the data format.")
+            return None
         
         # Display the visualization
         st.graphviz_chart(dot)
@@ -1622,7 +1693,7 @@ def format_iv_output(ivs):
             """)
         
     except Exception as e:
-        st.error(f"Error formatting IVs: {str(e)}")
+        st.error(f"Error formatting instrumental variables: {str(e)}")
         return None
 
 load_dotenv()
